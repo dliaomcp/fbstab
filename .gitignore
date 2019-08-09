@@ -1,0 +1,2 @@
+# Bazel build artifacts (symlinks)
+/bazel-*

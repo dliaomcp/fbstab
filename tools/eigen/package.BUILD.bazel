@@ -1,0 +1,24 @@
+# -*- python -*-
+
+licenses([
+    "notice",  # BSD-3-Clause
+    "reciprocal",  # MPL-2.0
+    "unencumbered",  # Public-Domain
+])
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "eigen",
+    hdrs = glob(
+        include = [
+            "Eigen/*",
+            "Eigen/**/*.h",
+        ],
+        exclude = ["**/CMakeLists.txt"],
+    ),
+    defines = ["EIGEN_MPL2_ONLY"],
+    includes = ["."],
+)

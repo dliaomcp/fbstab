@@ -1,0 +1,5 @@
+# Add C++11 compiler flags.
+build --cxxopt=-std=c++11
+
+# Default to an optimized build.
+build -c opt

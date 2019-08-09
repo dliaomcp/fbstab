@@ -1,0 +1,21 @@
+# -*- python -*-
+
+load(
+    "//tools:fbstab.bzl",
+    "fbstab_cc_googletest",
+    "fbstab_cc_binary",
+)
+
+package(default_visibility = ["//visibility:private"])
+
+fbstab_cc_binary(
+	name = "main",
+	srcs = ["main.cc"],
+	deps = ["@eigen"],
+)
+
+fbstab_cc_googletest(
+	name = "test",
+	srcs = ["test.cc"],
+	deps = ["@eigen"]
+)
