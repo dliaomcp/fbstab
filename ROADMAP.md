@@ -9,7 +9,8 @@
 ## Component classes
 - Write general sparse matrix components
 - Add bound support to MPC
-- Write sprase MPC components
+- Add support for differently dimensioned terminal and initial constraints to MPC
+- Write sparse MPC components
 
 ## Code and such
 - Write abstract interface class for components
