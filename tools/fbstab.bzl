@@ -14,8 +14,8 @@ CXX_FLAGS = [
     "-Werror=overloaded-virtual",
     "-Werror=pedantic",
     "-Werror=shadow",
+    "-std=c++11",
 ]
-
 
 def _platform_copts(rule_copts, cc_test = 0):
     return CXX_FLAGS + rule_copts

@@ -1,12 +1,12 @@
 # -*- python -*-
-
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def eigen_repository(name):
-    new_git_repository(
-        name = name,
-        remote = "https://github.com/eigenteam/eigen-git-mirror.git",
-        commit = "9e97af7de76716c99abdbfd4a4acb182ef098808",
-        shallow_since = "1487684194 +0100",
-        build_file = "//tools/eigen:package.BUILD.bazel",
-    )
+    http_archive(
+      name = name,
+      urls = ["http://bitbucket.org/eigen/eigen/get/3.3.7.zip"],
+      sha256 = "65d3aebb5094280869955bcfb41aada2f5194e2d608f930951e810ce4c945c0b",
+      build_file = "//tools/eigen:package.BUILD.bazel",
+      strip_prefix = "eigen-eigen-323c052e1731",
+  	)
+

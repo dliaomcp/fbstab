@@ -5,6 +5,8 @@
 
 workspace(name = "fbstab")
 
+# External dependencies are added here, see the various folders under
+# fbstab/tools/ for definitions.
 load("@fbstab//tools/eigen:repository.bzl","eigen_repository")
 load("@fbstab//tools/gtest:repository.bzl","gtest_repository")
 
