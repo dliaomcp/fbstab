@@ -1,1 +1,16 @@
 # -*- python -*-
+
+load(
+    "//tools:fbstab.bzl",
+    "fbstab_cc_library",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+fbstab_cc_library(
+	name = "essential",
+	hdrs = [
+	"copyable_macros.h",
+	"utilities.h",
+	],
+)
