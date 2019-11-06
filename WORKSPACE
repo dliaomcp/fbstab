@@ -10,5 +10,11 @@ workspace(name = "fbstab")
 load("@fbstab//tools/eigen:repository.bzl","eigen_repository")
 load("@fbstab//tools/gtest:repository.bzl","gtest_repository")
 
-eigen_repository(name = "eigen")
+# By default fbstab downloads an appropriate version of Eigen.
+# If you'd like to use a version installed on your system instead
+# set use_local = True and supply the local absolute path.
+# This should contain the Eigen/ directory that contains 
+# Eigen, Dense, Core etc. (not the one that contains e.g., INSTALL)
+eigen_repository(name = "eigen", use_local = False, local_path = "/usr/local/include/")
+
 gtest_repository(name = "gtest")

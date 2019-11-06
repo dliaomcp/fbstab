@@ -52,12 +52,12 @@ FBstab is written in C++ 11 and uses [Bazel](https://bazel.build/) as its primar
 Once you've cloned the repo and installed bazel you can check if everything is working by nagivating to the project root and running ```bazel test //...``` in your terminal. Make sure you have at least Bazel 1.1.0 installed, this is a common issue.
  
 If your project uses Bazel then FBstab's targets can be [made directly available](https://docs.bazel.build/versions/master/external.html). 
-Otherwise, we recommend building one of the top level libraries in ```fbstab/BUILD.bazel``` using e.g., the command ```bazel build fbstab_mpc``` and linking with the resulting static libraries in ```bazel-bin/```. Interfaces are exposed in the header files:
+Otherwise, we recommend building one of the top level libraries in ```fbstab/BUILD.bazel``` using e.g., the command ```bazel build //fbstab:fbstab_mpc``` and linking with the resulting static libraries in ```bazel-bin/```. Interfaces are exposed in the header files:
 
-- ```fbstab_mpc.h``` 
-- ```fbstab_dense.h```
+- ```fbstab/fbstab_mpc.h``` 
+- ```fbstab/fbstab_dense.h```
 
-By default, the build system will automatically download appropriate versions of all dependencies. If you wish to use a local copy instead, e.g., if other parts of your project rely on Eigen and you want to enforce consistent versioning, open ```tools/eigen/repository.bzl``` and replace the ```http_archive``` with a ```local_repository``` as described [here](https://docs.bazel.build/versions/master/external.html).
+By default, the build system will automatically download appropriate versions of all dependencies. If you wish to use a local "installation" of Eigen instead, e.g., if other parts of your project rely on it and you want to enforce consistent versioning, we provide the option to do so, see the comments in the `WORKSPACE` file.
 
 We currently have the following interfaces planned/available:
 
@@ -67,7 +67,7 @@ We currently have the following interfaces planned/available:
 
 FBstab is still under active development so, while the mathematical problem definitions are more or less stable, the interfaces will likely change as the project matures.
 
-FBstab is primarily developed on MacOS using clang but is highly portable, as long as a compliant C++ 11 compiler is available you should be able to build FBstab. Versions of FBstab have been tested on Xenial and Bionic with gcc and clang compilers in the past and we plan to support MacOS, Linux, and Windows. We hope to get CI up and running soon. 
+FBstab is primarily developed on macOS but is highly portable, as long as a compliant C++ 11 compiler is available you should be able to build it. Versions of FBstab have been tested on Xenial and Bionic with gcc and clang compilers in the past and we plan to support MacOS, Linux, and Windows. We hope to get CI up and running soon. 
 
 ## Citing FBstab
 If you find FBstab useful and would like to cite it in your academic publications, we suggest the following BibTeX citation:
