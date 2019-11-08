@@ -49,19 +49,17 @@ FBstab is written in C++ 11 and uses [Bazel](https://bazel.build/) as its primar
 1. [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 2. [googletest](https://github.com/google/googletest) (for testing only)
 
-Once you've cloned the repo and installed bazel you can check if everything is working by nagivating to the project root and running ```bazel test //...``` in your terminal. Make sure you have at least Bazel 1.1.0 installed, this is a common issue.
+Once you've cloned the repo and installed bazel you can check if everything is working by nagivating to the project root and running ```bazel test //...``` in your terminal. Make sure you have at least Bazel 1.1.0 installed, this is a common issue.  
  
-If your project uses Bazel then FBstab's targets can be [made directly available](https://docs.bazel.build/versions/master/external.html). 
-Otherwise, we recommend building one of the top level libraries in ```fbstab/BUILD.bazel``` using e.g., the command ```bazel build //fbstab:fbstab_mpc``` and linking with the resulting static libraries in ```bazel-bin/```. Interfaces are exposed in the header files:
+If your project uses Bazel then FBstab's targets can be [made directly available](https://docs.bazel.build/versions/master/external.html). We also provide basic [cmake](https://cmake.org/) files so that FBstab can be included in cmake projects using the `add_subdirectory` command. 
 
-- ```fbstab/fbstab_mpc.h``` 
-- ```fbstab/fbstab_dense.h```
-
-By default, the build system will automatically download appropriate versions of all dependencies. If you wish to use a local "installation" of Eigen instead, e.g., if other parts of your project rely on it and you want to enforce consistent versioning, we provide the option to do so, see the comments in the `WORKSPACE` file.
+By default, Bazel will automatically download appropriate versions of all dependencies. If you wish to use a local "installation" of Eigen instead, e.g., if other parts of your project rely on it and you want to enforce consistent versioning, we provide the option to do so, see the comments in the `WORKSPACE` file.
 
 We currently have the following interfaces planned/available:
 
-1. C++: See ``` fbstab/tests/``` for usage examples.
+1. C++: See ``` fbstab/tests/``` for usage examples. Interfaces are exposed in the header files:
+	- ```fbstab/fbstab_mpc.h``` 
+	- ```fbstab/fbstab_dense.h```
 2. MATLAB (In progress)
 3. Python (Planned)
 
