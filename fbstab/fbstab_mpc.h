@@ -61,11 +61,11 @@ class FBstabMpc {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabMpc);
   /**
-   * Structure to hold the problem data.
+   * Structure to hold references to the problem data.
    * See the class documentation or (29) in https://arxiv.org/pdf/1901.04046.pdf
    * for more details.
    */
-  struct QPData {
+  struct QPData {  // rename to data reference?
     ///  N + 1 vector of nx x nx matrices
     const std::vector<Eigen::MatrixXd>* Q = nullptr;
     /// N + 1 vector of nu x nu matrices
@@ -90,6 +90,36 @@ class FBstabMpc {
     const std::vector<Eigen::VectorXd>* d = nullptr;
     /// nx x 1 vector
     const Eigen::VectorXd* x0 = nullptr;
+  };
+
+  /**
+   * Structure to collect the problem data.
+   */
+  struct Data {
+    ///  N + 1 vector of nx x nx matrices
+    const std::vector<Eigen::MatrixXd> Q;
+    /// N + 1 vector of nu x nu matrices
+    const std::vector<Eigen::MatrixXd> R;
+    /// N + 1 vector of nu x nx matrices
+    const std::vector<Eigen::MatrixXd> S;
+    /// N + 1 vector of nx x 1 vectors
+    const std::vector<Eigen::VectorXd> q;
+    /// N + 1 vector of nu x 1 vectors
+    const std::vector<Eigen::VectorXd> r;
+    /// N vector of nx x nx matrices
+    const std::vector<Eigen::MatrixXd> A;
+    /// N  vector of nx x nu matrices
+    const std::vector<Eigen::MatrixXd> B;
+    /// N vector of nx vectors
+    const std::vector<Eigen::VectorXd> c;
+    /// N + 1 vector of nc x nx matrices
+    const std::vector<Eigen::MatrixXd> E;
+    /// N + 1 vector of nc x nu matrices
+    const std::vector<Eigen::MatrixXd> L;
+    /// N + 1 vector of nc x 1 vectors
+    const std::vector<Eigen::VectorXd> d;
+    /// nx x 1 vector
+    const Eigen::VectorXd x0;
   };
 
   /**

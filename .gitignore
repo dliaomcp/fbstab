@@ -1,2 +1,3 @@
 # Bazel build artifacts (symlinks)
 /bazel-*
+cmake-bin
