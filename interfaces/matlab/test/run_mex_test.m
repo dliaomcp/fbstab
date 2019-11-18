@@ -12,4 +12,4 @@ A = {a,b};
 s.A = {a,a};
 s.B = {b,b};
 % call the mex function
-mex_test(A,s);
+mex_test(A,s,'hi');

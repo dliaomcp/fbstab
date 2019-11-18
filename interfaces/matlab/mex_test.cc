@@ -1,13 +1,13 @@
 #include "mex.hpp"
-#include "mexAdapter.hpp"
 
+#include <Eigen/Dense>
 #include <array>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <Eigen/Dense>
+#include "mexAdapter.hpp"
 
 using namespace matlab::data;
 
@@ -54,11 +54,11 @@ class MexFunction : public matlab::mex::Function {
 
     StructArray data2 = std::move(inputs[1]);
     auto fields = data2.getFieldNames();
-    std::vector<matlab::data::MATLABFieldIdentifier> field_names(fields.begin(),
-                                                                 fields.end());
+    std::vector<MATLABFieldIdentifier> field_names(fields.begin(),
+                                                   fields.end());
 
     // I can loop over field_names and work on the correct bit of input data by
-    // checking for equivalence between
+    // checking for equivalence.
     for (const auto& name : field_names) {
       std::ostringstream stream;
       stream << std::string(name) << std::endl;
@@ -66,8 +66,23 @@ class MexFunction : public matlab::mex::Function {
       matlab::data::MATLABFieldIdentifier tmp("A");
       if (name == tmp) {
         MatlabMessage("Found A!\n");
+        // data2[0] is a Struct which can be indexed by its field names
+        CellArray Adata = std::move(data2[0]["A"]);
+        int N2 = Adata.getNumberOfElements();
       }
     }
+
+    // String checking
+    CharArray ts = inputs[2];
+
+    TypedArray<char16_t> tt = ts;
+    std::u16string str(tt.release().get());
+    std::u16string hi_str(u"hi");
+
+    int isHI = str.compare(hi_str);
+    std::ostringstream stream;
+    stream << isHI << std::endl;
+    MatlabMessage(stream);
   }
 
  private:
@@ -92,8 +107,8 @@ class MexFunction : public matlab::mex::Function {
 
   void ValidateInputs(matlab::mex::ArgumentList inputs) {
     ArrayFactory factory;
-    if (inputs.size() != 2) {
-      MatlabError("Expects 2 inputs\n");
+    if (inputs.size() != 3) {
+      MatlabError("Expects 3 inputs\n");
     }
     if (inputs[0].getType() != ArrayType::CELL) {
       MatlabError("First input must be a cell\n");

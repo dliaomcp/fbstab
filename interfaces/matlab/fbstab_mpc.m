@@ -13,14 +13,18 @@ methods(Access = public)
     o.nz = (o.N+1)*(o.nx+o.nu);
     o.nl = (o.N+1)*o.nx;
     o.nv = (o.N+1)*o.nc;
-
   end
 
-  function [x,out] = solve(o,data,x0,opts)
-    if nargin <
+  function [nz,nl,nv] = problem_size(o)
+    nz = o.nz;
+    nl = o.nl;
+    nv = o.nv;
   end
 
-  function opts = 
+  function [x,out] = solve(o,data,x0)
+  end
+
+  function opts = default_options()
   end
 
 end % public methods
