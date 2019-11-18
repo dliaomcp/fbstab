@@ -2,7 +2,7 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def eigen_repository(name,use_local = False, local_path = "/usr/local/include/"):
-    if use_local:
+    if not use_local:
         http_archive(
           name = name,
           urls = ["http://bitbucket.org/eigen/eigen/get/3.3.7.zip"],
