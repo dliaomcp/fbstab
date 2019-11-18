@@ -4,18 +4,21 @@ include(FetchContent)
 project(fbstab)
 enable_testing()
 
-set(FBSTAB_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-set(FBSTAB_FLAGS "-O2 -g0")
+# Export include directory.
+set(ENV{FBSTAB_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+
 # TODO(dliaomcp@umich.edu)
 # Figure out how to add error and warning flags to the build without
 # breaking Eigen or googletest...
+set(FBSTAB_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+set(FBSTAB_FLAGS "-O2 -g0")
 
-# Add fbstab's compilation flags.
+# Add fbstab's compilation flags and C++ standard.
+# The individual targets also require C++ 11.
 set(ADD_FBSTAB_OPTIONS TRUE)
 if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR ADD_FBSTAB_OPTIONS)
 	set(CMAKE_CXX_STANDARD 11)
 	set(CMAKE_CXX_STANDARD_REQUIRED True)
-
 	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${FBSTAB_FLAGS}")
 endif()
 
@@ -25,12 +28,14 @@ endif()
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-# Make googletest available.
+# Make googletest available if FBstab is the main project.
+if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME))
 FetchContent_Declare(
   googletest
   GIT_REPOSITORY https://github.com/google/googletest.git
   GIT_TAG        release-1.10.0
 )
 FetchContent_MakeAvailable(googletest)
+endif()
 
 add_subdirectory(fbstab)
