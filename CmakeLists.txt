@@ -11,16 +11,6 @@ set(ENV{FBSTAB_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 # Figure out how to add error and warning flags to the build without
 # breaking Eigen or googletest...
 set(FBSTAB_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-set(FBSTAB_FLAGS "-O2 -g0")
-
-# Add fbstab's compilation flags and C++ standard.
-# The individual targets also require C++ 11.
-set(ADD_FBSTAB_OPTIONS TRUE)
-if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR ADD_FBSTAB_OPTIONS)
-	set(CMAKE_CXX_STANDARD 11)
-	set(CMAKE_CXX_STANDARD_REQUIRED True)
-	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${FBSTAB_FLAGS}")
-endif()
 
 # Finds a system Eigen,
 # if you haven't run Eigen's cmake + install scripts then
@@ -38,4 +28,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 endif()
 
+# The cmake build system isn't used for debugging,
+# so default to an optimized build.
+add_compile_options(-O3 -g0 -std=c++11) 
 add_subdirectory(fbstab)
