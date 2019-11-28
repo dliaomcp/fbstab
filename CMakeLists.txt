@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.10)
 include(FetchContent)
 
 project(fbstab)
@@ -20,12 +20,11 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Make googletest available if FBstab is the main project.
 if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME))
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG        release-1.10.0
-)
-FetchContent_MakeAvailable(googletest)
+include(cmake/googletest.cmake)
+fetch_googletest(
+    ${PROJECT_SOURCE_DIR}/cmake
+    ${PROJECT_BINARY_DIR}/googletest)
+enable_testing()
 endif()
 
 # The cmake build system isn't used for debugging,
