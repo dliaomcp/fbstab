@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include <Eigen/Dense>
+#include <vector>
 
 #include "fbstab/components/mpc_data.h"
 #include "fbstab/components/mpc_residual.h"
@@ -49,7 +48,7 @@ class MpcComponentUnitTests;
  */
 class RiccatiLinearSolver {
  public:
-  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(RiccatiLinearSolver);
+  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(RiccatiLinearSolver)
   /**
    * Allocates workspace memory.
    *

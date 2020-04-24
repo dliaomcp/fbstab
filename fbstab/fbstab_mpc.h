@@ -58,7 +58,7 @@ using FBstabAlgoMpc = FBstabAlgorithm<MpcVariable, MpcResidual, MpcData,
  */
 class FBstabMpc {
  public:
-  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabMpc);
+  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabMpc)
   /**
    * Structure to hold references to the problem data.
    * See the class documentation or (29) in https://arxiv.org/pdf/1901.04046.pdf

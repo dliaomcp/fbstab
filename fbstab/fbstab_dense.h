@@ -49,7 +49,7 @@ using FBstabAlgoDense = FBstabAlgorithm<DenseVariable, DenseResidual, DenseData,
  */
 class FBstabDense {
  public:
-  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabDense);
+  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabDense)
   /** Structure to hold the problem data. */
   struct QPData {
     /// nz x nz real positive semidefinite Hessian matrix.
