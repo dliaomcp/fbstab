@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include <Eigen/Dense>
+#include <vector>
 
 #include "tools/copyable_macros.h"
 
@@ -167,6 +166,8 @@ class MpcData {
    */
   void axpyb(double a, Eigen::VectorXd* y) const;
 
+  double ForcingNorm() const { return forcing_norm_; }
+
  private:
   int N_ = 0;   // horizon length
   int nx_ = 0;  // number of states
@@ -175,6 +176,8 @@ class MpcData {
   int nz_ = 0;  // number of primal variables
   int nl_ = 0;  // number of equality duals
   int nv_ = 0;  // number of inequality duals
+
+  double forcing_norm_ = 0.0;
 
   const std::vector<Eigen::MatrixXd>* Q_ = nullptr;
   const std::vector<Eigen::MatrixXd>* R_ = nullptr;

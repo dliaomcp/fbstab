@@ -1,9 +1,9 @@
 #include "fbstab/components/mpc_data.h"
 
+#include <Eigen/Dense>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
-
-#include <Eigen/Dense>
 
 namespace fbstab {
 
@@ -54,6 +54,20 @@ MpcData::MpcData(const std::vector<Eigen::MatrixXd>* Q,
   nz_ = (N_ + 1) * (nx_ + nu_);
   nl_ = (N_ + 1) * nx_;
   nv_ = (N_ + 1) * nc_;
+
+  // Compute the forcing norm = ||[f,h,b]||
+  forcing_norm_ = 0.0;
+  for (int i = 0; i < N_ + 1; i++) {
+    forcing_norm_ += q_->at(i).squaredNorm();
+    forcing_norm_ += r_->at(i).squaredNorm();
+    forcing_norm_ += d_->at(i).squaredNorm();
+    if (i == 0) {
+      forcing_norm_ += x0_->squaredNorm();
+    } else {
+      forcing_norm_ += c_->at(i - 1).squaredNorm();
+    }
+  }
+  forcing_norm_ = sqrt(forcing_norm_);
 }
 
 void MpcData::gemvH(const Eigen::VectorXd& x, double a, double b,

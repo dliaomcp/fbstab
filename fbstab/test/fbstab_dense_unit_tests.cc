@@ -6,10 +6,10 @@
  * s.t. Az <= b
  *
  */
-#include <cmath>
-
 #include <gtest/gtest.h>
+
 #include <Eigen/Dense>
+#include <cmath>
 
 #include "fbstab/fbstab_dense.h"
 
@@ -62,8 +62,11 @@ GTEST_TEST(FBstabDense, FeasibleQP) {
   x0.y = &y0;
 
   FBstabDense solver(n, q);
-  solver.UpdateOption("abs_tol", 1e-8);
-  solver.SetDisplayLevel(FBstabAlgoDense::Display::OFF);
+  FBstabDense::Options opts = FBstabDense::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::FINAL;
+  solver.UpdateOptions(opts);
+
   SolverOut out = solver.Solve(data, &x0);
 
   ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);
@@ -128,8 +131,12 @@ GTEST_TEST(FBstabDense, DegenerateQP) {
   x0.y = &y0;
 
   FBstabDense solver(n, q);
-  solver.UpdateOption("abs_tol", 1e-8);
-  solver.SetDisplayLevel(FBstabAlgoDense::Display::OFF);
+
+  FBstabDense::Options opts = FBstabDense::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::FINAL;
+  solver.UpdateOptions(opts);
+
   SolverOut out = solver.Solve(data, &x0);
 
   ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);
@@ -190,8 +197,12 @@ GTEST_TEST(FBstabDense, InfeasibleQP) {
   x0.y = &y0;
 
   FBstabDense solver(n, q);
-  solver.UpdateOption("abs_tol", 1e-8);
-  solver.SetDisplayLevel(FBstabAlgoDense::Display::OFF);
+
+  FBstabDense::Options opts = FBstabDense::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::FINAL;
+  solver.UpdateOptions(opts);
+
   SolverOut out = solver.Solve(data, &x0);
 
   ASSERT_EQ(out.eflag, ExitFlag::PRIMAL_INFEASIBLE);
@@ -243,8 +254,12 @@ GTEST_TEST(FBstabDense, UnboundedQP) {
   x0.y = &y0;
 
   FBstabDense solver(n, q);
-  solver.UpdateOption("abs_tol", 1e-8);
-  solver.SetDisplayLevel(FBstabAlgoDense::Display::OFF);
+
+  FBstabDense::Options opts = FBstabDense::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::FINAL;
+  solver.UpdateOptions(opts);
+
   SolverOut out = solver.Solve(data, &x0);
 
   ASSERT_EQ(out.eflag, ExitFlag::DUAL_INFEASIBLE);

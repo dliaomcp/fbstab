@@ -1,8 +1,8 @@
+#include <gtest/gtest.h>
+
+#include <Eigen/Dense>
 #include <cmath>
 #include <vector>
-
-#include <gtest/gtest.h>
-#include <Eigen/Dense>
 
 #include "fbstab/fbstab_mpc.h"
 #include "fbstab/test/ocp_generator.h"
@@ -29,8 +29,10 @@ GTEST_TEST(FBstabMpc, DoubleIntegrator) {
   Eigen::Vector4d size = ocp.ProblemSize();
   FBstabMpc solver(size(0), size(1), size(2), size(3));
 
-  solver.UpdateOption("abs_tol", 1e-6);
-  solver.SetDisplayLevel(FBstabAlgoMpc::Display::ITER);
+  FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::ITER;
+  solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
   ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);
@@ -82,8 +84,10 @@ GTEST_TEST(FBstabMpc, DoubleIntegratorLongHorizon) {
   Eigen::Vector4d size = ocp.ProblemSize();
   FBstabMpc solver(size(0), size(1), size(2), size(3));
 
-  solver.UpdateOption("abs_tol", 1e-6);
-  solver.SetDisplayLevel(FBstabAlgoMpc::Display::ITER);
+  FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::ITER;
+  solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
   ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);
@@ -107,8 +111,10 @@ GTEST_TEST(FBstabMpc, ServoMotor) {
   Eigen::Vector4d size = ocp.ProblemSize();
   FBstabMpc solver(size(0), size(1), size(2), size(3));
 
-  solver.UpdateOption("abs_tol", 1e-6);
-  solver.SetDisplayLevel(FBstabAlgoMpc::Display::ITER);
+  FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::ITER;
+  solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
   ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);
@@ -132,8 +138,10 @@ GTEST_TEST(FBstabMpc, SpacecraftRelativeMotion) {
   Eigen::Vector4d size = ocp.ProblemSize();
   FBstabMpc solver(size(0), size(1), size(2), size(3));
 
-  solver.UpdateOption("abs_tol", 1e-6);
-  solver.SetDisplayLevel(FBstabAlgoMpc::Display::ITER);
+  FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::ITER;
+  solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
   ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);
@@ -157,8 +165,10 @@ GTEST_TEST(FBstabMpc, CopolymerizationReactor) {
   Eigen::Vector4d size = ocp.ProblemSize();
   FBstabMpc solver(size(0), size(1), size(2), size(3));
 
-  solver.UpdateOption("abs_tol", 1e-6);
-  solver.SetDisplayLevel(FBstabAlgoMpc::Display::ITER);
+  FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::ITER;
+  solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
   ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);

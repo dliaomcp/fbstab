@@ -9,6 +9,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "tools/utilities.h"
+
 namespace fbstab {
 
 // Return codes for the solver.
@@ -22,8 +24,7 @@ enum class ExitFlag {
 };
 
 /**
- * Packages the exit flag, overall residual, solve time,
- * and iteration counts.
+ * Output Data
  *
  * A negative valuve for solve_time indicates that no timing data is available.
  */
@@ -34,6 +35,51 @@ struct SolverOut {
   int prox_iters = 0;
   double solve_time = 0.0;  /// CPU time in s.
   double initial_residual = 0.0;
+};
+
+/** Display settings */
+enum class Display {
+  OFF = 0,           ///< no display
+  FINAL = 1,         ///< prints message upon completion
+  ITER = 2,          ///< basic information at each outer loop iteration
+  ITER_DETAILED = 3  ///< print detailed inner loop information
+};
+
+/** Stores algorithm parameters */
+struct AlgorithmParameters {
+  double sigma0 = 1e-8;       ///< Initial stabilization parameter
+  double sigma_max = 1e-8;    ///< Maximum stabilization parameter
+  double sigma_min = 1e-10;   ///< Minimum stabilization parameter
+  double alpha = 0.95;        ///< Penalized FB function parameter
+  double beta = 0.7;          ///< Backtracking parameter
+  double eta = 1e-8;          ///< Sufficient decrease parameter
+  double delta = 1.0 / 5.0;   ///< Reduction factor for subproblem tolerance
+  double gamma = 1.0 / 10.0;  ///< Reduction factor for sigma
+
+  double abs_tol = 1e-6;     ///< Absolute tolerance
+  double rel_tol = 1e-12;    ///< Relative tolerance
+  double stall_tol = 1e-10;  ///< Tolerance on ||dx||
+  double infeas_tol = 1e-8;  ///< Relative tolerance for feasibility checking
+
+  double inner_tol_max = 1e-1;   ///< Maximum value for the subproblem tolerance
+  double inner_tol_min = 1e-12;  ///< Minimum value for the subproblem tolerance
+
+  int max_newton_iters = 500;     ///< Maximum number of Newton iterations
+  int max_prox_iters = 100;       ///< Maximum number of proximal iterations
+  int max_inner_iters = 100;      ///< Maximum number of iterations that can be
+                                  ///< applied to a single subproblem
+  int max_linesearch_iters = 20;  ///< Maximum backtracking linesearch steps
+
+  bool check_feasibility = true;           ///< Controls the feasibility checker
+  bool nonmonotone_linesearch = true;      ///<  Controls nonmonotone linesearch
+  Display display_level = Display::FINAL;  ///< Controls verbosity
+
+  /** Checks validity of fields and overwrites if necessary. */
+  void ValidateOptions();
+  /** Overwrites with defaults */
+  void DefaultParameters();
+  /** Overwrites with parameters for hard or ill-conditioned problems */
+  void ReliableParameters();
 };
 
 using clock = std::chrono::high_resolution_clock;
@@ -69,16 +115,8 @@ template <class Variable, class Residual, class Data, class LinearSolver,
           class Feasibility>
 class FBstabAlgorithm {
  public:
-  /** Display settings */
-  enum class Display {
-    OFF = 0,           ///< no display
-    FINAL = 1,         ///< prints message upon completion
-    ITER = 2,          ///< basic information at each outer loop iteration
-    ITER_DETAILED = 3  ///< print detailed inner loop information
-  };
-
   /**
-   * Saves the components objects needed by the solver.
+   * Constructor: saves the components objects needed by the solver.
    *
    * @param[in] x1,x2,x3,x4 Variable objects used by the solver
    * @param[in] r1,r2 Residual objects used by the solver
@@ -87,35 +125,7 @@ class FBstabAlgorithm {
    */
   FBstabAlgorithm(Variable* x1, Variable* x2, Variable* x3, Variable* x4,
                   Residual* r1, Residual* r2, LinearSolver* lin_sol,
-                  Feasibility* fcheck) {
-    if (x1 == nullptr || x2 == nullptr || x3 == nullptr || x4 == nullptr) {
-      throw std::runtime_error(
-          "A Variable supplied to FBstabAlgorithm is null.");
-    }
-    if (r1 == nullptr || r2 == nullptr) {
-      throw std::runtime_error(
-          "A Residual supplied to FBstabAlgorithm is null");
-    }
-    if (lin_sol == nullptr) {
-      throw std::runtime_error(
-          "The LinearSolver supplied to FBstabAlgorithm is null.");
-    }
-    if (fcheck == nullptr) {
-      throw std::runtime_error(
-          "The Feasibility object supplied to FBstabAlgorithm is null.");
-    }
-
-    xk_ = x1;
-    xi_ = x2;
-    xp_ = x3;
-    dx_ = x4;
-
-    rk_ = r1;
-    ri_ = r2;
-
-    linear_solver_ = lin_sol;
-    feasibility_ = fcheck;
-  }
+                  Feasibility* fcheck);
 
   /**
    * Attempts to solve the QP for the given
@@ -131,88 +141,35 @@ class FBstabAlgorithm {
 
   /**
    * Allows setting of algorithm options.
-   * @param[in] option option name
-   * @param[in] value  new value
-   *
-   * Possible options and default parameters are:
-   * - sigma0{1e-8}: Initial stabilization parameter
-   * - alpha{0.95}:  Penalized FB function parameter
-   * - beta{0.7}:    Backtracking linesearch parameter
-   * - eta{1e-8}:    Sufficient decrease parameter
-   * - inner_tol_multiplier{0.2}: Reduction factor for subproblem tolerance
-   *
-   * - abs_tol{1e-6}: Absolute tolerance
-   * - rel_tol{1e-12}: Relative tolerance
-   * - stall_tol{1e-10}: Tolerance on ||dx||
-   * - infeas_tol{1e-8}: Relative tolerance used in feasibility checking
-   *
-   * - inner_tol_max{1.0}: Maximum value for the subproblem tolerance
-   * - inner_tol_min{1e-12}: Minimum value for the subproblem tolerance
-   *
-   * - max_newton_iters{200}: Maximum number of Newton iterations before timeout
-   * - max_prox_iters{30}: Maximum number of proximal iterations before timeout
-   * - max_inner_iters{50}: Maximum number of iterations that can be applied
-   * to a single subproblem
-   * - max_linesearch_iters{20}: Maximum number of backtracking linesearch steps
-   *
-   * - check_feasibility{true}: Enables or disables the feasibility checker,
-   * if the problem is known to be feasible then it can be disabled for speed.
+   * @param[in] option New options
    */
-  void UpdateOption(const char* option, double value) {
-    if (std::strcmp(option, "abs_tol") == 0) {
-      abs_tol_ = std::max(value, 1e-14);
-    } else if (std::strcmp(option, "rel_tol") == 0) {
-      rel_tol_ = std::max(value, 0.0);
-    } else if (std::strcmp(option, "stall_tol") == 0) {
-      stall_tol_ = std::max(value, 1e-14);
-    } else if (std::strcmp(option, "infeas_tol") == 0) {
-      infeasibility_tol_ = std::max(value, 1e-14);
-    } else if (std::strcmp(option, "sigma0") == 0) {
-      sigma0_ = std::max(value, 1e-14);
-    } else if (std::strcmp(option, "alpha") == 0) {
-      alpha_ = saturate(value, 0.001, 0.999);
-    } else if (std::strcmp(option, "beta") == 0) {
-      beta_ = saturate(value, 0.1, 0.99);
-    } else if (std::strcmp(option, "eta") == 0) {
-      eta_ = saturate(value, 1e-12, 0.499);
-    } else if (std::strcmp(option, "inner_tol_multiplier") == 0) {
-      inner_tol_multiplier_ = saturate(value, 0.0001, 0.99);
-    } else if (std::strcmp(option, "inner_tol_max") == 0) {
-      inner_tol_max_ = saturate(value, 1e-8, 100.0);
-    } else if (std::strcmp(option, "inner_tol_min") == 0) {
-      inner_tol_min_ = saturate(value, 1e-14, 1e-2);
-    } else {
-      printf("%s is not an option, no action taken\n", option);
-    }
+  void UpdateParameters(const AlgorithmParameters* const options) {
+    opts_.sigma0 = options->sigma0;
+    opts_.sigma_min = options->sigma_min;
+    opts_.sigma_max = options->sigma_max;
+    opts_.alpha = options->alpha;
+    opts_.beta = options->beta;
+    opts_.eta = options->eta;
+    opts_.delta = options->delta;
+    opts_.gamma = options->gamma;
+    opts_.abs_tol = options->abs_tol;
+    opts_.rel_tol = options->rel_tol;
+    opts_.stall_tol = options->stall_tol;
+    opts_.infeas_tol = options->infeas_tol;
+    opts_.inner_tol_max = options->inner_tol_max;
+    opts_.inner_tol_min = options->inner_tol_min;
+    opts_.max_newton_iters = options->max_newton_iters;
+    opts_.max_prox_iters = options->max_prox_iters;
+    opts_.max_inner_iters = options->max_inner_iters;
+    opts_.max_linesearch_iters = options->max_linesearch_iters;
+    opts_.check_feasibility = options->check_feasibility;
+    opts_.nonmonotone_linesearch = options->nonmonotone_linesearch;
+    opts_.display_level = options->display_level;
+    opts_.ValidateOptions();
   }
 
-  void UpdateOption(const char* option, int value) {
-    if (std::strcmp(option, "max_newton_iters") == 0) {
-      max_newton_iters_ = std::max(value, 1);
-    } else if (std::strcmp(option, "max_prox_iters") == 0) {
-      max_prox_iters_ = std::max(value, 1);
-    } else if (std::strcmp(option, "max_inner_iters") == 0) {
-      max_inner_iters_ = std::max(value, 1);
-    } else if (std::strcmp(option, "max_linesearch_iters") == 0) {
-      max_linesearch_iters_ = std::max(value, 1);
-    } else {
-      printf("%s is not an option, no action taken\n", option);
-    }
-  }
-  void UpdateOption(const char* option, bool value) {
-    if (std::strcmp(option, "check_feasibility") == 0) {
-      check_feasibility_ = value;
-    } else if (std::strcmp(option, "record_solve_time") == 0) {
-      record_solve_time_ = value;
-    } else {
-      printf("%s is not an option, no action taken\n", option);
-    }
-  }
-
-  /** Getter for display_level_ */
-  Display get_display_level() const { return display_level_; }
-  /** Setter for display_level_ */
-  void set_display_level(Display v) { display_level_ = v; }
+  /** Returns current parameters */
+  AlgorithmParameters CurrentParameters() const { return opts_; }
 
  private:
   using time_point = clock::time_point;
@@ -224,7 +181,8 @@ class FBstabAlgorithm {
     BOTH = 3
   };
 
-  bool record_solve_time_ = true;
+  // Combined absolute and relative tolerances
+  double combo_tol_ = 0.0;
 
   // Iteration counters.
   int newton_iters_ = 0;
@@ -245,33 +203,7 @@ class FBstabAlgorithm {
   // Feasibility checker object
   Feasibility* feasibility_ = nullptr;
 
-  // Algorithm parameters,
-  // see https://arxiv.org/pdf/1901.04046.pdf for details.
-  double sigma0_ = 1e-8;  // initial regularization parameter
-  double alpha_ = 0.95;   // see (19) in https://arxiv.org/pdf/1901.04046.pdf
-  double beta_ = 0.7;     // backtracking lineseach parameter
-  double eta_ = 1e-8;     // sufficient decrease parameter
-  double inner_tol_multiplier_ = 1.0 / 5;  // tolerance reduction factor
-
-  double abs_tol_ = 1e-6;            // absolute tolerance
-  double rel_tol_ = 1e-12;           // relative tolerance
-  double stall_tol_ = 1e-10;         // change tolerance
-  double infeasibility_tol_ = 1e-8;  // infeasibility tolerance
-
-  // Tolerance guards.
-  double inner_tol_max_ = 1e-1;
-  double inner_tol_min_ = 1e-12;
-
-  // Iteration guards.
-  int max_newton_iters_ = 500;
-  int max_prox_iters_ = 100;
-  int max_inner_iters_ = 100;
-  int max_linesearch_iters_ = 20;
-
-  bool check_feasibility_ = true;
-
-  // Default display settings.
-  FBstabAlgorithm::Display display_level_ = Display::FINAL;
+  AlgorithmParameters opts_;
 
   // TODO(dliaomcp@umich.edu) Switch to circular buffer implementation to avoid
   // copy overhead.
@@ -279,7 +211,9 @@ class FBstabAlgorithm {
   static_assert(kNonMonotoneLineSearch > 0,
                 "kNonMonotoneLineSearch must be positive");
   std::array<double, kNonMonotoneLineSearch> merit_buffer_ = {
-      {0.0, 0.0, 0.0, 0.0, 0.0}};
+      {0.0, 0.0, 0.0, 0.0,
+       0.0}};  // This needs to be initialized with the correct number of zeros
+               // to avoid a subtle compiler error.
 
   /*
    * Attempts to solve a proximal subproblem x = P(xbar,sigma) using
@@ -311,11 +245,11 @@ class FBstabAlgorithm {
                           const Residual& r, time_point start,
                           double initial_residual) const {
     struct SolverOut output;
-    if (record_solve_time_) {
-      time_point now = clock::now();
-      std::chrono::duration<double> elapsed = now - start;
-      output.solve_time = elapsed.count();
-    }
+
+    time_point now = clock::now();
+    std::chrono::duration<double> elapsed = now - start;
+    output.solve_time = elapsed.count();
+
     output.eflag = e;
     output.residual = r.Norm();
     output.newton_iters = newton_iters;
@@ -333,7 +267,7 @@ class FBstabAlgorithm {
    * @return feasibility status
    */
   InfeasibilityStatus CheckInfeasibility(const Variable& x) {
-    feasibility_->ComputeFeasibility(x, infeasibility_tol_);
+    feasibility_->ComputeFeasibility(x, opts_.infeas_tol);
 
     InfeasibilityStatus status = InfeasibilityStatus::FEASIBLE;
     if (!feasibility_->IsPrimalFeasible()) {
@@ -364,21 +298,9 @@ class FBstabAlgorithm {
     return *std::max_element(merit_buffer_.begin(), merit_buffer_.end());
   }
 
-  // Projects x onto [a,b].
-  template <class T>
-  static T saturate(const T& x, const T& a, const T& b) {
-    if (a > b) {
-      throw std::runtime_error(
-          "In FBstabAlgorithm::saturate: upper bound must be larger than the "
-          "lower bound");
-    }
-    const T temp = std::min(x, b);
-    return std::max(temp, a);
-  }
-
   // Prints a header line to stdout depending on display settings.
   void PrintIterHeader() const {
-    if (display_level_ == Display::ITER) {
+    if (opts_.display_level == Display::ITER) {
       printf("%12s  %12s  %12s  %12s  %12s  %12s  %12s\n", "prox iter",
              "newton iters", "|rz|", "|rl|", "|rv|", "Inner res", "Inner tol");
     }
@@ -387,7 +309,7 @@ class FBstabAlgorithm {
   // Prints an iteration progress line to stdout depending on display settings.
   void PrintIterLine(int prox_iters, int newton_iters, const Residual& rk,
                      const Residual& ri, double itol) const {
-    if (display_level_ == Display::ITER) {
+    if (opts_.display_level == Display::ITER) {
       printf("%12d  %12d  %12.4e  %12.4e  %12.4e  %12.4e  %12.4e\n", prox_iters,
              newton_iters, rk.z_norm(), rk.l_norm(), rk.v_norm(), ri.Norm(),
              itol);
@@ -397,7 +319,7 @@ class FBstabAlgorithm {
   // Prints a detailed header line to stdout depending on display settings.
   void PrintDetailedHeader(int prox_iters, int newton_iters,
                            const Residual& r) const {
-    if (display_level_ == Display::ITER_DETAILED) {
+    if (opts_.display_level == Display::ITER_DETAILED) {
       double t = r.Norm();
       printf("Begin Prox Iter: %d, Total Newton Iters: %d, Residual: %6.4e\n",
              prox_iters, newton_iters, t);
@@ -410,7 +332,7 @@ class FBstabAlgorithm {
   // settings.
   void PrintDetailedLine(int iter, double step_length,
                          const Residual& r) const {
-    if (display_level_ == Display::ITER_DETAILED) {
+    if (opts_.display_level == Display::ITER_DETAILED) {
       printf("%10d  %10e  %10e  %10e  %10e\n", iter, step_length, r.z_norm(),
              r.l_norm(), r.v_norm());
     }
@@ -418,7 +340,7 @@ class FBstabAlgorithm {
 
   // Prints a footer to stdout depending on display settings.
   void PrintDetailedFooter(double tol, const Residual& r) const {
-    if (display_level_ == Display::ITER_DETAILED) {
+    if (opts_.display_level == Display::ITER_DETAILED) {
       printf(
           "Exiting inner loop. Inner residual: %6.4e, Inner tolerance: "
           "%6.4e\n",
@@ -428,7 +350,7 @@ class FBstabAlgorithm {
   // Prints a summary to stdout depending on display settings.
   void PrintFinal(int prox_iters, int newton_iters, ExitFlag eflag,
                   const Residual& r, double t) const {
-    if (display_level_ >= Display::FINAL) {
+    if (opts_.display_level >= Display::FINAL) {
       printf("\nOptimization completed!  Exit code:");
       switch (eflag) {
         case ExitFlag::SUCCESS:
@@ -454,16 +376,54 @@ class FBstabAlgorithm {
       }
       printf("Time elapsed: %f ms (-1.0 indicates timing disabled)\n", t);
       printf("Proximal iterations: %d out of %d\n", prox_iters,
-             max_prox_iters_);
+             opts_.max_prox_iters);
       printf("Newton iterations: %d out of %d\n", newton_iters,
-             max_newton_iters_);
+             opts_.max_newton_iters);
       printf("%10s  %10s  %10s  %10s\n", "|rz|", "|rl|", "|rv|", "Tolerance");
       printf("%10.4e  %10.4e  %10.4e  %10.4e\n", r.z_norm(), r.l_norm(),
-             r.v_norm(), abs_tol_);
+             r.v_norm(), combo_tol_);
       printf("\n");
     }
   }
 };
+
+// Constructor implementation
+template <class Variable, class Residual, class Data, class LinearSolver,
+          class Feasibility>
+FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+                Feasibility>::FBstabAlgorithm(Variable* x1, Variable* x2,
+                                              Variable* x3, Variable* x4,
+                                              Residual* r1, Residual* r2,
+                                              LinearSolver* lin_sol,
+                                              Feasibility* fcheck) {
+  if (x1 == nullptr || x2 == nullptr || x3 == nullptr || x4 == nullptr) {
+    throw std::runtime_error("A Variable supplied to FBstabAlgorithm is null.");
+  }
+  if (r1 == nullptr || r2 == nullptr) {
+    throw std::runtime_error("A Residual supplied to FBstabAlgorithm is null");
+  }
+  if (lin_sol == nullptr) {
+    throw std::runtime_error(
+        "The LinearSolver supplied to FBstabAlgorithm is null.");
+  }
+  if (fcheck == nullptr) {
+    throw std::runtime_error(
+        "The Feasibility object supplied to FBstabAlgorithm is null.");
+  }
+
+  xk_ = x1;
+  xi_ = x2;
+  xp_ = x3;
+  dx_ = x4;
+
+  rk_ = r1;
+  ri_ = r2;
+
+  linear_solver_ = lin_sol;
+  feasibility_ = fcheck;
+
+  opts_.DefaultParameters();
+}
 
 // TODO(dliaomcp@umich.edu): Enable printing to a log file rather than just
 // stdout
@@ -472,14 +432,13 @@ template <class Variable, class Residual, class Data, class LinearSolver,
 SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
                           Feasibility>::Solve(const Data* qp_data,
                                               Variable* x0) {
-  const time_point start_time{record_solve_time_ ? clock::now()
-                                                 : time_point{} /* dummy */};
+  const time_point start_time{clock::now() /* dummy */};
 
   // Make sure the linear solver and residuals objects are using the same value
   // for the alpha parameter.
-  rk_->SetAlpha(alpha_);
-  ri_->SetAlpha(alpha_);
-  linear_solver_->SetAlpha(alpha_);
+  rk_->SetAlpha(opts_.alpha);
+  ri_->SetAlpha(opts_.alpha);
+  linear_solver_->SetAlpha(opts_.alpha);
 
   // Supply a pointer to the data object.
   xk_->LinkData(qp_data);
@@ -489,7 +448,8 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   x0->LinkData(qp_data);
 
   // Initialization phase.
-  const double sigma = sigma0_;
+  const double sigma = opts_.sigma0;
+  combo_tol_ = opts_.abs_tol + opts_.rel_tol * (1.0 + qp_data->ForcingNorm());
 
   x0->InitializeConstraintMargin();
   xk_->Copy(*x0);
@@ -500,7 +460,8 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   ri_->Fill(0.0);
   double E0 = rk_->Norm();
   double Ek = E0;
-  double inner_tol = saturate(E0, inner_tol_min_, inner_tol_max_);
+  double inner_tol =
+      tools::saturate(E0, opts_.inner_tol_min, opts_.inner_tol_max);
 
   // Reset iteration count.
   newton_iters_ = 0;
@@ -509,13 +470,14 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   PrintIterHeader();
 
   // Main proximal loop.
-  for (int k = 0; k < max_prox_iters_; k++) {
+  for (int k = 0; k < opts_.max_prox_iters; k++) {
     // The solver stops if:
-    // a) the desired precision is obtained
-    // b) the iterations stall, ie., ||x(k) - x(k-1)|| <= tol
+    // a) ||rk|| <= abs_tol + rel_tol*(1 + ||w||)
+    // b) ||x(k) - x(k-1)|| <= stall_tol
     rk_->PenalizedNaturalResidual(*xk_);
     Ek = rk_->Norm();
-    if (Ek <= abs_tol_ + E0 * rel_tol_ || dx_->Norm() <= stall_tol_) {
+
+    if (Ek <= combo_tol_ || dx_->Norm() <= opts_.stall_tol) {
       PrintIterLine(prox_iters_, newton_iters_, *rk_, *ri_, inner_tol);
       SolverOut output = PrepareOutput(ExitFlag::SUCCESS, prox_iters_,
                                        newton_iters_, *rk_, start_time, E0);
@@ -530,53 +492,43 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
     // TODO(dliaomcp@umich.edu) Implement adaptive rule for decreasing sigma.
 
     // Update subproblem tolerance.
-    inner_tol = saturate(inner_tol * inner_tol_multiplier_, inner_tol_min_, Ek);
+    inner_tol =
+        tools::saturate(inner_tol * opts_.delta, opts_.inner_tol_min, Ek);
 
     // Solve the proximal subproblem.
     xi_->Copy(*xk_);
     const double Eo = SolveProximalSubproblem(xi_, xk_, inner_tol, sigma, Ek);
     // Iteration timeout check.
-    if (newton_iters_ >= max_newton_iters_) {
+    if (newton_iters_ >= opts_.max_newton_iters) {
       if (Eo < Ek) {
         x0->Copy(*xi_);
-        SolverOut output = PrepareOutput(ExitFlag::MAXITERATIONS, prox_iters_,
-                                         newton_iters_, *rk_, start_time, E0);
-        return output;
       } else {
         x0->Copy(*xk_);
-        rk_->PenalizedNaturalResidual(*xk_);
-        SolverOut output = PrepareOutput(ExitFlag::MAXITERATIONS, prox_iters_,
-                                         newton_iters_, *rk_, start_time, E0);
-        return output;
       }
+      rk_->PenalizedNaturalResidual(*x0);
+      SolverOut output = PrepareOutput(ExitFlag::MAXITERATIONS, prox_iters_,
+                                       newton_iters_, *rk_, start_time, E0);
+      return output;
     }
 
     // Compute dx <- x(k+1) - x(k).
     dx_->Copy(*xi_);
     dx_->axpy(-1.0, *xk_);
-    // Check for infeasibility.
-    if (check_feasibility_) {
+    if (opts_.check_feasibility) {
+      ExitFlag eflag = ExitFlag::MAXITERATIONS;
       InfeasibilityStatus status = CheckInfeasibility(*dx_);
       if (status != InfeasibilityStatus::FEASIBLE) {
         if (status == InfeasibilityStatus::PRIMAL) {
-          SolverOut output =
-              PrepareOutput(ExitFlag::PRIMAL_INFEASIBLE, prox_iters_,
-                            newton_iters_, *rk_, start_time, E0);
-          x0->Copy(*dx_);
-          return output;
+          eflag = ExitFlag::PRIMAL_INFEASIBLE;
         } else if (status == InfeasibilityStatus::DUAL) {
-          SolverOut output =
-              PrepareOutput(ExitFlag::DUAL_INFEASIBLE, prox_iters_,
-                            newton_iters_, *rk_, start_time, E0);
-          x0->Copy(*dx_);
-          return output;
+          eflag = ExitFlag::DUAL_INFEASIBLE;
         } else {
-          SolverOut output =
-              PrepareOutput(ExitFlag::PRIMAL_DUAL_INFEASIBLE, prox_iters_,
-                            newton_iters_, *rk_, start_time, E0);
-          x0->Copy(*dx_);
-          return output;
+          eflag = ExitFlag::PRIMAL_DUAL_INFEASIBLE;
         }
+        SolverOut output = PrepareOutput(eflag, prox_iters_, newton_iters_,
+                                         *rk_, start_time, E0);
+        x0->Copy(*dx_);
+        return output;
       }
     }
     // x(k+1) = x(i)
@@ -600,7 +552,7 @@ double FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
 
   double Eo = 0;   // KKT residual.
   double t = 1.0;  // Linesearch parameter.
-  for (int i = 0; i < max_inner_iters_; i++) {
+  for (int i = 0; i < opts_.max_inner_iters; i++) {
     // Compute subproblem residual.
     ri_->InnerResidual(*x, *xbar, sigma);
     double Ei = ri_->Norm();
@@ -613,14 +565,15 @@ double FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
     // tolerance and the outer residual has been reduced.
     // b) The outer residual cannot be decreased
     // (this can happen if the problem is infeasible).
-    if ((Ei <= tol && Eo < current_outer_residual) || (Ei <= inner_tol_min_)) {
+    if ((Ei <= tol && Eo < current_outer_residual) ||
+        (Ei <= opts_.inner_tol_min)) {
       PrintDetailedLine(i, t, *ri_);
       PrintDetailedFooter(tol, *ri_);
       break;
     } else {
       PrintDetailedLine(i, t, *ri_);
     }
-    if (newton_iters_ >= max_newton_iters_) {
+    if (newton_iters_ >= opts_.max_newton_iters) {
       break;
     }
 
@@ -639,23 +592,25 @@ double FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
     }
     newton_iters_++;
 
-    // Perform a non-monotone linesearch.
+    // Linesearch
     const double current_merit = ri_->Merit();
     InsertMerit(current_merit);
-    const double m0 = MaxMerit();
+    const double m0 = opts_.nonmonotone_linesearch ? MaxMerit() : current_merit;
+
     t = 1.0;
-    for (int j = 0; j < max_linesearch_iters_; j++) {
+    for (int j = 0; j < opts_.max_linesearch_iters; j++) {
       // Compute a trial point xp = x + t*dx
       // and evaluate the merit function at xp.
       xp_->Copy(*x);
       xp_->axpy(t, *dx_);
       ri_->InnerResidual(*xp_, *xbar, sigma);
       const double mp = ri_->Merit();
+
       // Armijo descent check.
-      if (mp <= m0 - 2.0 * t * eta_ * current_merit) {
+      if (mp <= m0 - 2.0 * t * opts_.eta * current_merit) {
         break;
       } else {
-        t *= beta_;
+        t *= opts_.beta;
       }
     }
     x->axpy(t, *dx_);  // x <- x + t*dx
@@ -664,6 +619,75 @@ double FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
   x->ProjectDuals();
 
   return Eo;
+}
+
+void AlgorithmParameters::ValidateOptions() {
+  sigma0 = std::max(sigma0, 1e-10);
+  sigma_max = tools::saturate(sigma_max, 1e-6, 1e2);
+  sigma_min = tools::saturate(sigma_min, 1e-13, 1e-8);
+  sigma0 = tools::saturate(sigma0, sigma_min, sigma_max);
+
+  alpha = tools::saturate(alpha, 0.001, 0.999);
+  beta = tools::saturate(beta, 0.1, 0.99);
+  eta = tools::saturate(eta, 1e-12, 0.499);
+  delta = tools::saturate(delta, 0.0001, 0.99);
+  gamma = tools::saturate(gamma, 0.001, 0.9);
+
+  abs_tol = std::max(abs_tol, 1e-14);
+  rel_tol = std::max(rel_tol, 0.0);
+  stall_tol = std::max(stall_tol, 1e-14);
+  infeas_tol = std::max(infeas_tol, 1e-14);
+
+  inner_tol_max = tools::saturate(inner_tol_max, 1e-8, 1e2);
+  inner_tol_min = tools::saturate(inner_tol_min, 1e-14, 1e-2);
+
+  max_newton_iters = std::max(max_newton_iters, 1);
+  max_prox_iters = std::max(max_prox_iters, 1);
+  max_inner_iters = std::max(max_inner_iters, 1);
+  max_linesearch_iters = std::max(max_linesearch_iters, 1);
+}
+
+void AlgorithmParameters::DefaultParameters() {
+  sigma0 = 1e-8;
+  sigma_max = 1e-6;
+  sigma_min = 1e-12;
+  alpha = 0.95;
+  beta = 0.75;
+  eta = 1e-8;
+  delta = 0.2;
+  gamma = 0.1;
+
+  abs_tol = 1e-6;
+  rel_tol = 1e-12;
+  stall_tol = 1e-10;
+  infeas_tol = 1e-8;
+
+  inner_tol_max = 1e-2;
+  inner_tol_min = 1e-12;
+
+  max_newton_iters = 200;
+  max_prox_iters = 30;
+  max_inner_iters = 50;
+  max_linesearch_iters = 20;
+
+  check_feasibility = true;
+  nonmonotone_linesearch = true;
+  display_level = Display::FINAL;
+}
+
+void AlgorithmParameters::ReliableParameters() {
+  DefaultParameters();
+  sigma0 = 1e-4;
+  sigma_max = 1e-2;
+  sigma_min = 1e-10;
+  beta = 0.9;
+
+  abs_tol = 1e-4;
+  rel_tol = 1e-6;
+  max_linesearch_iters = 40;
+  max_newton_iters = 500;
+  max_prox_iters = 100;
+  nonmonotone_linesearch = false;
 }
 
 }  // namespace fbstab

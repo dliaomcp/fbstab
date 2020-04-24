@@ -1,10 +1,9 @@
 #include "fbstab/fbstab_mpc.h"
 
+#include <Eigen/Dense>
 #include <memory>
 #include <stdexcept>
 #include <vector>
-
-#include <Eigen/Dense>
 
 #include "fbstab/components/mpc_data.h"
 #include "fbstab/components/mpc_feasibility.h"
@@ -39,12 +38,12 @@ FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
   r2_ = tools::make_unique<MpcResidual>(N, nx, nu, nc);
 
   linear_solver_ = tools::make_unique<RiccatiLinearSolver>(N, nx, nu, nc);
-
   feasibility_checker_ = tools::make_unique<MpcFeasibility>(N, nx, nu, nc);
-
   algorithm_ = tools::make_unique<FBstabAlgoMpc>(
       x1_.get(), x2_.get(), x3_.get(), x4_.get(), r1_.get(), r2_.get(),
       linear_solver_.get(), feasibility_checker_.get());
+
+  opts_ = DefaultOptions();
 }
 
 SolverOut FBstabMpc::Solve(const QPData& qp, const QPVariable* x,
@@ -70,17 +69,22 @@ SolverOut FBstabMpc::Solve(const QPData& qp, const QPVariable* x,
   return algorithm_->Solve(&data, &x0);
 }
 
-void FBstabMpc::UpdateOption(const char* option, double value) {
-  algorithm_->UpdateOption(option, value);
+void FBstabMpc::UpdateOptions(const Options& options) {
+  // No need to validate since there are no additional options and the algorithm
+  // will check the algorithmic ones.
+  algorithm_->UpdateParameters(&options);
 }
-void FBstabMpc::UpdateOption(const char* option, int value) {
-  algorithm_->UpdateOption(option, value);
+
+FBstabMpc::Options FBstabMpc::DefaultOptions() {
+  Options opts;
+  opts.DefaultParameters();
+  return opts;
 }
-void FBstabMpc::UpdateOption(const char* option, bool value) {
-  algorithm_->UpdateOption(option, value);
-}
-void FBstabMpc::SetDisplayLevel(FBstabAlgoMpc::Display level) {
-  algorithm_->set_display_level(level);
+
+FBstabMpc::Options FBstabMpc::ReliableOptions() {
+  Options opts;
+  opts.ReliableParameters();
+  return opts;
 }
 
 // Explicit instantiation.

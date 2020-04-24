@@ -1,9 +1,8 @@
 #pragma once
 
+#include <Eigen/Dense>
 #include <memory>
 #include <vector>
-
-#include <Eigen/Dense>
 
 #include "fbstab/components/mpc_data.h"
 #include "fbstab/components/mpc_feasibility.h"
@@ -144,6 +143,9 @@ class FBstabMpc {
     Eigen::VectorXd* y = nullptr;
   };
 
+  /** A Structure to hold options */
+  struct Options : public AlgorithmParameters {};
+
   /**
    * Allocates workspaces needed when solving (1).
    *
@@ -169,20 +171,16 @@ class FBstabMpc {
                   bool use_initial_guess = true);
 
   /**
-   * Allows for setting of solver options, see fbstab_algorithm.h for a list.
-   * @param option Option name
-   * @param value  New value
+   * Allows for setting of solver options. See fbstab_algorithm.h for
+   * a list of adjustable options.
+   * @param[in] option New option struct
    */
-  void UpdateOption(const char* option, double value);
-  void UpdateOption(const char* option, int value);
-  void UpdateOption(const char* option, bool value);
+  void UpdateOptions(const Options& options);
 
-  /**
-   * Controls the verbosity of the algorithm,
-   * see fbstab_algorithm.h for details.
-   * @param level new display level
-   */
-  void SetDisplayLevel(FBstabAlgoMpc::Display level);
+  /** Returns default settings, recommended for most problems. */
+  static Options DefaultOptions();
+  /** Settings for increased reliability for use on hard problems. */
+  static Options ReliableOptions();
 
  private:
   int N_ = 0;   // horizon length
@@ -192,6 +190,7 @@ class FBstabMpc {
   int nz_ = 0;  // number of primal variables
   int nl_ = 0;  // number of equality duals
   int nv_ = 0;  // number of inequality duals
+  Options opts_;
 
   std::unique_ptr<FBstabAlgoMpc> algorithm_;
   std::unique_ptr<MpcVariable> x1_;

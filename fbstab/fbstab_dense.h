@@ -1,8 +1,7 @@
 #pragma once
 
-#include <memory>
-
 #include <Eigen/Dense>
+#include <memory>
 
 #include "fbstab/components/dense_data.h"
 #include "fbstab/components/dense_feasibility.h"
@@ -47,30 +46,6 @@ using FBstabAlgoDense = FBstabAlgorithm<DenseVariable, DenseResidual, DenseData,
  * The problem is of size (nz,nv) where:
  * - nz > 0 is the number of decision variables
  * - nv > 0 is the number of inequality constraints
- *
- * Usage example:
- * @code
- * MatrixXd H(2,2);
- * MatrixXd A(1,2);
- * VectorXd f(2);
- * VectorXd b(1);
- *
- * H << 1,0,1,0;
- * A << 1,0;
- * f << 1,-1;
- * b << 0;
- *
- * FBstabDense::QPData data = {&H, &A, &f, &b};
- *
- * VectorXd x0 = VectorXd::Zero(2);
- * VectorXd v0 = VectorXd::Zero(1);
- * VectorXd y0 = VectorXd::Zero(1);
- *
- * FBstabDense::QPVariable x = {&x0, &v0, &y0};
- *
- * FBstabDense solver(2,1);
- * solver.Solve(data,x); // x is used as an initial guess then overwritten
- * @endcode
  */
 class FBstabDense {
  public:
@@ -100,6 +75,10 @@ class FBstabDense {
     /// Constraint margin, i.e., y = b-Az, in \reals^nv.
     Eigen::VectorXd* y = nullptr;
   };
+
+  /** A Structure to hold options */
+  struct Options : public AlgorithmParameters {};
+
   /**
    * Allocates needed workspace given the dimensions of the QPs to
    * be solved. Throws a runtime_error if any inputs are non-positive.
@@ -127,24 +106,20 @@ class FBstabDense {
   /**
    * Allows for setting of solver options. See fbstab_algorithm.h for
    * a list of adjustable options.
-   * @param[in] option Option name
-   * @param[in] value  New value
+   * @param[in] option New option struct
    */
-  void UpdateOption(const char* option, double value);
-  void UpdateOption(const char* option, int value);
-  void UpdateOption(const char* option, bool value);
+  void UpdateOptions(const Options& options);
 
-  /**
-   * Controls the verbosity of the algorithm.
-   * See fbstab_algorithm.h for details.
-   * @param[in] level new display level
-   */
-  void SetDisplayLevel(FBstabAlgoDense::Display level);
+  /** Returns default settings, recommended for most problems. */
+  static Options DefaultOptions();
+  /** Settings for increased reliability for use on hard problems. */
+  static Options ReliableOptions();
 
  private:
   int nz_ = 0;
   int nv_ = 0;
 
+  Options opts_;
   std::unique_ptr<FBstabAlgoDense> algorithm_;
   std::unique_ptr<DenseVariable> x1_;
   std::unique_ptr<DenseVariable> x2_;

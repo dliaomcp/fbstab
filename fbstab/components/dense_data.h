@@ -45,6 +45,7 @@ class DenseData {
   /** Read only accessor for the b vector. */
   const Eigen::VectorXd &b() const { return *b_; }
 
+  double ForcingNorm() const { return forcing_norm_; }
   /**
    * @return number of decision variables (i.e., dimension of z)
    */
@@ -57,6 +58,8 @@ class DenseData {
  private:
   int nz_ = 0;  // Number of decision variables.
   int nv_ = 0;  // Number of constraints.
+
+  double forcing_norm_ = 0.0;
 
   const Eigen::MatrixXd *const H_{nullptr};
   const Eigen::VectorXd *const f_{nullptr};

@@ -1,9 +1,8 @@
 #include "fbstab/components/dense_data.h"
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <stdexcept>
-
-#include <Eigen/Dense>
 
 namespace fbstab {
 
@@ -28,6 +27,8 @@ DenseData::DenseData(const MatrixXd *H, const VectorXd *f, const MatrixXd *A,
 
   nz_ = f->size();
   nv_ = b->size();
+
+  forcing_norm_ = sqrt(b->squaredNorm() + f->squaredNorm());
 }
 
 }  // namespace fbstab

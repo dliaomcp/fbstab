@@ -1,9 +1,8 @@
 #include "fbstab/fbstab_dense.h"
 
+#include <Eigen/Dense>
 #include <memory>
 #include <stdexcept>
-
-#include <Eigen/Dense>
 
 #include "fbstab/components/dense_data.h"
 #include "fbstab/components/dense_feasibility.h"
@@ -37,6 +36,8 @@ FBstabDense::FBstabDense(int num_variables, int num_constraints) {
   algorithm_ = tools::make_unique<FBstabAlgoDense>(
       x1_.get(), x2_.get(), x3_.get(), x4_.get(), r1_.get(), r2_.get(),
       linear_solver_.get(), feasibility_checker_.get());
+
+  opts_ = DefaultOptions();
 }
 
 SolverOut FBstabDense::Solve(const QPData& qp, const QPVariable* x,
@@ -60,18 +61,22 @@ SolverOut FBstabDense::Solve(const QPData& qp, const QPVariable* x,
   return algorithm_->Solve(&data, &x0);
 }
 
-void FBstabDense::UpdateOption(const char* option, int value) {
-  algorithm_->UpdateOption(option, value);
-}
-void FBstabDense::UpdateOption(const char* option, double value) {
-  algorithm_->UpdateOption(option, value);
-}
-void FBstabDense::UpdateOption(const char* option, bool value) {
-  algorithm_->UpdateOption(option, value);
+void FBstabDense::UpdateOptions(const Options& options) {
+  // No need to validate since there are no additional options and the algorithm
+  // will check the algorithmic ones.
+  algorithm_->UpdateParameters(&options);
 }
 
-void FBstabDense::SetDisplayLevel(FBstabAlgoDense::Display level) {
-  algorithm_->set_display_level(level);
+FBstabDense::Options FBstabDense::DefaultOptions() {
+  Options opts;
+  opts.DefaultParameters();
+  return opts;
+}
+
+FBstabDense::Options FBstabDense::ReliableOptions() {
+  Options opts;
+  opts.ReliableParameters();
+  return opts;
 }
 
 // Explicit instantiation.
