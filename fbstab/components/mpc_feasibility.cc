@@ -1,12 +1,11 @@
 #include "fbstab/components/mpc_feasibility.h"
 
+#include <Eigen/Dense>
 #include <algorithm>
 #include <stdexcept>
 
-#include <Eigen/Dense>
-
+#include "fbstab/components/abstract_components.h"
 #include "fbstab/components/mpc_data.h"
-#include "fbstab/components/mpc_variable.h"
 
 namespace fbstab {
 
@@ -29,7 +28,8 @@ MpcFeasibility::MpcFeasibility(int N, int nx, int nu, int nc) {
   tv_.resize(nv_);
 }
 
-void MpcFeasibility::ComputeFeasibility(const MpcVariable& x, double tol) {
+MpcFeasibility::FeasibilityStatus MpcFeasibility::CheckFeasibility(
+    const MpcVariable& x, double tol) {
   const MpcData* const data = x.data();
   if (x.N_ != N_ || x.nx_ != nx_ || x.nu_ != nu_ || x.nc_ != nc_) {
     throw std::runtime_error(
@@ -57,11 +57,10 @@ void MpcFeasibility::ComputeFeasibility(const MpcVariable& x, double tol) {
   const double d4 = tz_.dot(x.z());
 
   double w = x.z().lpNorm<Eigen::Infinity>();
+  bool dual_feasible = true;
   if ((d1 <= w * tol) && (d2 <= tol * w) && (d3 <= tol * w) && (d4 < 0) &&
       (w > 1e-14)) {
-    dual_feasible_ = false;
-  } else {
-    dual_feasible_ = true;
+    dual_feasible = false;
   }
 
   // The conditions for primal infeasibility are:
@@ -82,10 +81,19 @@ void MpcFeasibility::ComputeFeasibility(const MpcVariable& x, double tol) {
 
   const double u = std::max(x.v().lpNorm<Eigen::Infinity>(),
                             x.l().lpNorm<Eigen::Infinity>());
+  bool primal_feasible = true;
   if ((p1 <= tol * u) && (p2 < 0)) {
-    primal_feasible_ = false;
+    primal_feasible = false;
+  }
+
+  if (primal_feasible && dual_feasible) {
+    return FeasibilityStatus::FEASIBLE;
+  } else if (primal_feasible && !dual_feasible) {
+    return FeasibilityStatus::DUAL_INFEASIBLE;
+  } else if (!primal_feasible && dual_feasible) {
+    return FeasibilityStatus::PRIMAL_INFEASIBLE;
   } else {
-    primal_feasible_ = true;
+    return FeasibilityStatus::BOTH;
   }
 }
 

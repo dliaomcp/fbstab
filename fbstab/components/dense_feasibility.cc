@@ -1,9 +1,8 @@
 #include "fbstab/components/dense_feasibility.h"
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <stdexcept>
-
-#include <Eigen/Dense>
 
 #include "fbstab/components/dense_data.h"
 #include "fbstab/components/dense_variable.h"
@@ -21,7 +20,8 @@ DenseFeasibility::DenseFeasibility(int nz, int nv) {
   v1_.resize(nv_);
 }
 
-void DenseFeasibility::ComputeFeasibility(const DenseVariable& x, double tol) {
+DenseFeasibility::FeasibilityStatus DenseFeasibility::CheckFeasibility(
+    const DenseVariable& x, double tol) {
   if (tol <= 0) {
     throw std::runtime_error(
         "In DenseFeasibility::ComputeFeasibility: tol must be positive.");
@@ -43,10 +43,9 @@ void DenseFeasibility::ComputeFeasibility(const DenseVariable& x, double tol) {
   const double d3 = z1_.lpNorm<Eigen::Infinity>();
   const double w = x.z().lpNorm<Eigen::Infinity>();
 
+  bool dual_feasible = true;
   if ((d1 <= tol * w) && (d2 < 0) && (d3 <= tol * w)) {
-    dual_feasible_ = false;
-  } else {
-    dual_feasible_ = true;
+    dual_feasible = false;
   }
 
   // The conditions for primal infeasibility are:
@@ -57,10 +56,19 @@ void DenseFeasibility::ComputeFeasibility(const DenseVariable& x, double tol) {
   const double p2 = z1_.lpNorm<Eigen::Infinity>();
   const double u = x.v().lpNorm<Eigen::Infinity>();
 
+  bool primal_feasible = true;
   if ((p1 < 0) && (p2 <= tol * u)) {
-    primal_feasible_ = false;
+    primal_feasible = false;
+  }
+
+  if (primal_feasible && dual_feasible) {
+    return FeasibilityStatus::FEASIBLE;
+  } else if (primal_feasible && !dual_feasible) {
+    return FeasibilityStatus::DUAL_INFEASIBLE;
+  } else if (!primal_feasible && dual_feasible) {
+    return FeasibilityStatus::PRIMAL_INFEASIBLE;
   } else {
-    primal_feasible_ = true;
+    return FeasibilityStatus::BOTH;
   }
 }
 

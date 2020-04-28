@@ -198,6 +198,14 @@ inline Residual<Derived, Variable>::~Residual(){};
 template <class Variable>
 class FeasibilityResidual {
  public:
+  // Codes for infeasibility detection.
+  enum class FeasibilityStatus {
+    FEASIBLE = 0,
+    PRIMAL_INFEASIBLE = 1,
+    DUAL_INFEASIBLE = 2,
+    BOTH = 3
+  };
+
   virtual ~FeasibilityResidual() = 0;
   /**
    * Checks to see if x is an infeasibility certificate for the QP and stores
@@ -205,23 +213,12 @@ class FeasibilityResidual {
    * @param[in] x   infeasibility certificate candidate
    * @param[in] tol numerical tolerance
    *
+   * @return    FeasibilityStatus
+   *
    * Throws a runtime_error if x and *this aren't the same size
    * or if the problem data hasn't been linked.
    */
-  virtual void ComputeFeasibility(const Variable& x, double tol) = 0;
-
-  /**
-   * Retrieves the result of the last infeasibility check.
-   * @return false if a dual infeasibility certificate was found, true otherwise
-   */
-  virtual bool IsDualFeasible() const = 0;
-
-  /**
-   * Retrieves the result of the last infeasibility check.
-   * @return false if a primal infeasibility certificate was found, true
-   * otherwise
-   */
-  virtual bool IsPrimalFeasible() const = 0;
+  virtual FeasibilityStatus CheckFeasibility(const Variable& x, double tol) = 0;
 };
 
 template <class Variable>

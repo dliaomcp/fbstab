@@ -40,29 +40,13 @@ class MpcFeasibility : public FeasibilityResidual<MpcVariable> {
    * Throws a runtime_error if x and *this aren't the same size
    * or if the problem data hasn't been linked.
    */
-  void ComputeFeasibility(const MpcVariable& x, double tol);
-
-  /**
-   * Retrieves the result of the last infeasibility check.
-   * @return false if a dual infeasibility certificate was found, true otherwise
-   */
-  bool IsDualFeasible() const { return dual_feasible_; }
-
-  /**
-   * Retrieves the result of the last infeasibility check.
-   * @return false if a primal infeasibility certificate was found, true
-   * otherwise
-   */
-  bool IsPrimalFeasible() const { return primal_feasible_; }
+  FeasibilityStatus CheckFeasibility(const MpcVariable& x, double tol);
 
  private:
   // Workspaces
   Eigen::VectorXd tz_;
   Eigen::VectorXd tl_;
   Eigen::VectorXd tv_;
-
-  bool primal_feasible_ = true;
-  bool dual_feasible_ = true;
 
   int N_ = 0;   // horizon length
   int nx_ = 0;  // number of states

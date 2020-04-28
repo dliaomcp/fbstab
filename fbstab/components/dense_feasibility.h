@@ -40,21 +40,7 @@ class DenseFeasibility : public FeasibilityResidual<DenseVariable> {
    *
    * Throws a runtime_error if tol isn't positive.
    */
-  void ComputeFeasibility(const DenseVariable &x, double tol);
-
-  /**
-   * Returns the results of ComputeFeasibility
-   * @return false if the last point checked certifies that
-   *               the dual QP is infeasible, true otherwise
-   */
-  bool IsDualFeasible() const { return dual_feasible_; }
-
-  /**
-   * Returns the results of ComputeFeasibility
-   * @return false if the last point checked certifies that
-   *               the QP is infeasible, true otherwise
-   */
-  bool IsPrimalFeasible() const { return primal_feasible_; }
+  FeasibilityStatus CheckFeasibility(const DenseVariable &x, double tol);
 
  private:
   int nz_ = 0;  // number of decision variables
@@ -63,9 +49,6 @@ class DenseFeasibility : public FeasibilityResidual<DenseVariable> {
   // workspace vectors
   Eigen::VectorXd z1_;
   Eigen::VectorXd v1_;
-
-  bool primal_feasible_ = true;
-  bool dual_feasible_ = true;
 };
 
 }  // namespace fbstab

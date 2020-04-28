@@ -173,13 +173,6 @@ class FBstabAlgorithm {
 
  private:
   using time_point = clock::time_point;
-  // Codes for infeasibility detection.
-  enum class InfeasibilityStatus {
-    FEASIBLE = 0,
-    PRIMAL = 1,
-    DUAL = 2,
-    BOTH = 3
-  };
 
   // Combined absolute and relative tolerances
   double combo_tol_ = 0.0;
@@ -264,22 +257,21 @@ class FBstabAlgorithm {
   /**
    * Checks if x certifies primal or dual infeasibility.
    * @param[in]  x
-   * @return feasibility status
+   * @return ExitFlag::SUCCESS if feasible, appropriate infeasibility flag
+   * otherwise
    */
-  InfeasibilityStatus CheckInfeasibility(const Variable& x) {
-    feasibility_->ComputeFeasibility(x, opts_.infeas_tol);
-
-    InfeasibilityStatus status = InfeasibilityStatus::FEASIBLE;
-    if (!feasibility_->IsPrimalFeasible()) {
-      status = InfeasibilityStatus::PRIMAL;
+  ExitFlag CheckForInfeasibility(const Variable& x) {
+    typename Feasibility::FeasibilityStatus feas =
+        feasibility_->CheckFeasibility(x, opts_.infeas_tol);
+    if (feas == Feasibility::FeasibilityStatus::FEASIBLE) {
+      return ExitFlag::SUCCESS;
+    } else if (feas == Feasibility::FeasibilityStatus::PRIMAL_INFEASIBLE) {
+      return ExitFlag::PRIMAL_INFEASIBLE;
+    } else if (feas == Feasibility::FeasibilityStatus::DUAL_INFEASIBLE) {
+      return ExitFlag::DUAL_INFEASIBLE;
+    } else {
+      return ExitFlag::PRIMAL_DUAL_INFEASIBLE;
     }
-    if (!feasibility_->IsDualFeasible()) {
-      status = InfeasibilityStatus::DUAL;
-    }
-    if (!feasibility_->IsDualFeasible() && !feasibility_->IsPrimalFeasible()) {
-      status = InfeasibilityStatus::BOTH;
-    }
-    return status;
   }
 
   /**
@@ -516,22 +508,15 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
     dx_->Copy(*xi_);
     dx_->axpy(-1.0, *xk_);
     if (opts_.check_feasibility) {
-      ExitFlag eflag = ExitFlag::MAXITERATIONS;
-      InfeasibilityStatus status = CheckInfeasibility(*dx_);
-      if (status != InfeasibilityStatus::FEASIBLE) {
-        if (status == InfeasibilityStatus::PRIMAL) {
-          eflag = ExitFlag::PRIMAL_INFEASIBLE;
-        } else if (status == InfeasibilityStatus::DUAL) {
-          eflag = ExitFlag::DUAL_INFEASIBLE;
-        } else {
-          eflag = ExitFlag::PRIMAL_DUAL_INFEASIBLE;
-        }
+      ExitFlag eflag = CheckForInfeasibility(*dx_);
+      if (eflag != ExitFlag::SUCCESS) {
         SolverOut output = PrepareOutput(eflag, prox_iters_, newton_iters_,
                                          *rk_, start_time, E0);
         x0->Copy(*dx_);
         return output;
       }
     }
+
     // x(k+1) = x(i)
     xk_->Copy(*xi_);
     prox_iters_++;
