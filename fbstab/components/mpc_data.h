@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <vector>
 
+#include "fbstab/components/abstract_components.h"
 #include "tools/copyable_macros.h"
 
 namespace fbstab {
@@ -38,7 +39,7 @@ class MpcComponentUnitTests;
  * This class contains storage and methods for implicitly working with the
  * compact representation (2) in an efficient manner.
  */
-class MpcData {
+class MpcData : public Data {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(MpcData)
   /**

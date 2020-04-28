@@ -498,6 +498,7 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
     // Solve the proximal subproblem.
     xi_->Copy(*xk_);
     const double Eo = SolveProximalSubproblem(xi_, xk_, inner_tol, sigma, Ek);
+
     // Iteration timeout check.
     if (newton_iters_ >= opts_.max_newton_iters) {
       if (Eo < Ek) {
@@ -621,7 +622,7 @@ double FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
   return Eo;
 }
 
-void AlgorithmParameters::ValidateOptions() {
+inline void AlgorithmParameters::ValidateOptions() {
   sigma0 = std::max(sigma0, 1e-10);
   sigma_max = tools::saturate(sigma_max, 1e-6, 1e2);
   sigma_min = tools::saturate(sigma_min, 1e-13, 1e-8);
@@ -647,7 +648,7 @@ void AlgorithmParameters::ValidateOptions() {
   max_linesearch_iters = std::max(max_linesearch_iters, 1);
 }
 
-void AlgorithmParameters::DefaultParameters() {
+inline void AlgorithmParameters::DefaultParameters() {
   sigma0 = 1e-8;
   sigma_max = 1e-6;
   sigma_min = 1e-12;
@@ -675,7 +676,7 @@ void AlgorithmParameters::DefaultParameters() {
   display_level = Display::FINAL;
 }
 
-void AlgorithmParameters::ReliableParameters() {
+inline void AlgorithmParameters::ReliableParameters() {
   DefaultParameters();
   sigma0 = 1e-4;
   sigma_max = 1e-2;

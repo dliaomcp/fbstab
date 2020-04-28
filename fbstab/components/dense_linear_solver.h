@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 
+#include "fbstab/components/abstract_components.h"
 #include "fbstab/components/dense_data.h"
 #include "fbstab/components/dense_residual.h"
 #include "fbstab/components/dense_variable.h"
@@ -38,7 +39,7 @@ class DenseComponentUnitTests;
  * solver.Solve(r,&dx,sigma);
  * @endcode
  */
-class DenseLinearSolver {
+class DenseLinearSolver : public LinearSolver<DenseVariable, DenseResidual> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseLinearSolver)
   /**

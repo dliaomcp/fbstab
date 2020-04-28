@@ -1,9 +1,9 @@
 #pragma once
 
+#include <Eigen/Dense>
 #include <memory>
 
-#include <Eigen/Dense>
-
+#include "fbstab/components/abstract_components.h"
 #include "fbstab/components/mpc_data.h"
 #include "tools/copyable_macros.h"
 
@@ -30,7 +30,7 @@ class MpcComponentUnitTests;
  * length(v) = nv = nc*(N+1)
  * length(y) = nv = nc*(N+1)
  */
-class MpcVariable {
+class MpcVariable : Variable<MpcVariable, MpcData> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(MpcVariable)
   /**
@@ -111,8 +111,8 @@ class MpcVariable {
    */
   double Norm() const;
 
-  /** Returns true if x and y have the same dimensions. */
-  static bool SameSize(const MpcVariable& x, const MpcVariable& y);
+  /** Returns true if x and *this have the same dimensions. */
+  bool SameSize(const MpcVariable& x) const;
 
   /** Accessor for the decision variable. */
   Eigen::VectorXd& z() { return *z_; }

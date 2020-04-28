@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 
+#include "fbstab/components/abstract_components.h"
 #include "tools/copyable_macros.h"
 
 namespace fbstab {
@@ -15,7 +16,7 @@ namespace fbstab {
  * where H is symmetric and positive semidefinite.
  */
 
-class DenseData {
+class DenseData : public Data {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseData)
   /**

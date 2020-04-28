@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 
+#include "fbstab/components/abstract_components.h"
 #include "fbstab/components/mpc_data.h"
 #include "fbstab/components/mpc_variable.h"
 #include "tools/copyable_macros.h"
@@ -22,7 +23,7 @@ class MpcComponentUnitTests;
  * - l: Equality residual
  * - v: Inequality/complimentarity residual
  */
-class MpcResidual {
+class MpcResidual : public Residual<MpcResidual, MpcVariable> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(MpcResidual)
   /**
@@ -105,21 +106,6 @@ class MpcResidual {
    */
   void PenalizedNaturalResidual(const MpcVariable& x);
 
-  /** Accessor for stationarity residual. */
-  Eigen::VectorXd& z() { return z_; }
-  /** Accessor for stationarity residual. */
-  const Eigen::VectorXd& z() const { return z_; }
-
-  /** Accessor for the equality residual. */
-  Eigen::VectorXd& l() { return l_; }
-  /** Accessor for the equality residual. */
-  const Eigen::VectorXd& l() const { return l_; }
-
-  /** Accessor for complementarity residual. */
-  Eigen::VectorXd& v() { return v_; }
-  /** Accessor for complementarity residual. */
-  const Eigen::VectorXd& v() const { return v_; }
-
   /** Norm of the stationarity residual. */
   double z_norm() const { return znorm_; }
   /** Norm of the equality residual. */
@@ -145,6 +131,21 @@ class MpcResidual {
   double znorm_ = 0.0;  // cached norm of z_
   double lnorm_ = 0.0;  // cached norm of l_
   double vnorm_ = 0.0;  // cached norm of v_
+
+  /** Accessor for stationarity residual. */
+  Eigen::VectorXd& z() { return z_; }
+  /** Accessor for stationarity residual. */
+  const Eigen::VectorXd& z() const { return z_; }
+
+  /** Accessor for the equality residual. */
+  Eigen::VectorXd& l() { return l_; }
+  /** Accessor for the equality residual. */
+  const Eigen::VectorXd& l() const { return l_; }
+
+  /** Accessor for complementarity residual. */
+  Eigen::VectorXd& v() { return v_; }
+  /** Accessor for complementarity residual. */
+  const Eigen::VectorXd& v() const { return v_; }
 
   /*
    * Computes the penalized Fischer-Burmeister function pfb(a,b)

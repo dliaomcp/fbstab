@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 
+#include "fbstab/components/abstract_components.h"
 #include "fbstab/components/dense_data.h"
 #include "fbstab/components/dense_variable.h"
 #include "tools/copyable_macros.h"
@@ -15,7 +16,7 @@ namespace fbstab {
  * is a certificate of primal and/or dual infeasibility.
  * It implements Algorithm 3 of https://arxiv.org/pdf/1901.04046.pdf.
  */
-class DenseFeasibility {
+class DenseFeasibility : public FeasibilityResidual<DenseVariable> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseFeasibility)
   /**

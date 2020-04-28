@@ -1,8 +1,7 @@
 #pragma once
 
-#include <stdexcept>
-
 #include <Eigen/Dense>
+#include <stdexcept>
 
 #include "fbstab/components/dense_data.h"
 #include "fbstab/components/dense_variable.h"
@@ -18,7 +17,7 @@ namespace fbstab {
  * - z: Stationarity residual
  * - v: Complementarity residual
  */
-class DenseResidual {
+class DenseResidual : public Residual<DenseResidual, DenseVariable> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseResidual)
   /**

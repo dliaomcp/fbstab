@@ -25,7 +25,7 @@ Code that needs custom copy or move functions should not use these macros.
   Classname(Classname &&) = default;                                 \
   Classname &operator=(Classname &&) = default;                      \
   /* Fails at compile-time if default-copy doesn't work. */          \
-  static void DRAKE_COPYABLE_DEMAND_COPY_CAN_COMPILE() {             \
+  static void FBSTAB_COPYABLE_DEMAND_COPY_CAN_COMPILE() {            \
     (void)static_cast<Classname &(Classname::*)(const Classname &)>( \
         &Classname::operator=);                                      \
   }

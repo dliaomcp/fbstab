@@ -2,8 +2,8 @@
 
 load(
     "//tools:fbstab.bzl",
-    "fbstab_cc_library",
     "fbstab_cc_googletest",
+    "fbstab_cc_library",
 )
 
 package(default_visibility = ["//fbstab:__pkg__"])
@@ -11,7 +11,10 @@ package(default_visibility = ["//fbstab:__pkg__"])
 fbstab_cc_library(
     name = "dense_data",
     srcs = ["dense_data.cc"],
-    hdrs = ["dense_data.h"],
+    hdrs = [
+        "abstract_components.h",
+        "dense_data.h",
+    ],
     deps = [
         "//tools:essential",
         "@eigen",
@@ -21,7 +24,10 @@ fbstab_cc_library(
 fbstab_cc_library(
     name = "dense_variable",
     srcs = ["dense_variable.cc"],
-    hdrs = ["dense_variable.h"],
+    hdrs = [
+        "abstract_components.h",
+        "dense_variable.h",
+    ],
     deps = [
         ":dense_data",
         "//tools:essential",
@@ -31,10 +37,11 @@ fbstab_cc_library(
 
 fbstab_cc_library(
     name = "dense_residual",
-    srcs = [
-        "dense_residual.cc",
+    srcs = ["dense_residual.cc"],
+    hdrs = [
+        "abstract_components.h",
+        "dense_residual.h",
     ],
-    hdrs = ["dense_residual.h"],
     deps = [
         ":dense_data",
         ":dense_variable",
@@ -48,7 +55,10 @@ fbstab_cc_library(
     srcs = [
         "dense_feasibility.cc",
     ],
-    hdrs = ["dense_feasibility.h"],
+    hdrs = [
+        "abstract_components.h",
+        "dense_feasibility.h",
+    ],
     deps = [
         ":dense_data",
         ":dense_variable",
@@ -62,7 +72,10 @@ fbstab_cc_library(
     srcs = [
         "dense_linear_solver.cc",
     ],
-    hdrs = ["dense_linear_solver.h"],
+    hdrs = [
+        "abstract_components.h",
+        "dense_linear_solver.h",
+    ],
     deps = [
         ":dense_data",
         ":dense_residual",
@@ -91,7 +104,10 @@ fbstab_cc_googletest(
 fbstab_cc_library(
     name = "mpc_data",
     srcs = ["mpc_data.cc"],
-    hdrs = ["mpc_data.h"],
+    hdrs = [
+        "abstract_components.h",
+        "mpc_data.h",
+    ],
     deps = [
         "//tools:essential",
         "@eigen",
@@ -101,7 +117,10 @@ fbstab_cc_library(
 fbstab_cc_library(
     name = "mpc_variable",
     srcs = ["mpc_variable.cc"],
-    hdrs = ["mpc_variable.h"],
+    hdrs = [
+        "abstract_components.h",
+        "mpc_variable.h",
+    ],
     deps = [
         ":mpc_data",
         "//tools:essential",
@@ -112,7 +131,10 @@ fbstab_cc_library(
 fbstab_cc_library(
     name = "mpc_residual",
     srcs = ["mpc_residual.cc"],
-    hdrs = ["mpc_residual.h"],
+    hdrs = [
+        "abstract_components.h",
+        "mpc_residual.h",
+    ],
     deps = [
         ":mpc_data",
         ":mpc_variable",
@@ -124,7 +146,10 @@ fbstab_cc_library(
 fbstab_cc_library(
     name = "mpc_feasibility",
     srcs = ["mpc_feasibility.cc"],
-    hdrs = ["mpc_feasibility.h"],
+    hdrs = [
+        "abstract_components.h",
+        "mpc_feasibility.h",
+    ],
     deps = [
         ":mpc_data",
         ":mpc_variable",
@@ -136,7 +161,10 @@ fbstab_cc_library(
 fbstab_cc_library(
     name = "riccati_linear_solver",
     srcs = ["riccati_linear_solver.cc"],
-    hdrs = ["riccati_linear_solver.h"],
+    hdrs = [
+        "abstract_components.h",
+        "riccati_linear_solver.h",
+    ],
     deps = [
         ":mpc_data",
         ":mpc_residual",
@@ -162,4 +190,3 @@ fbstab_cc_googletest(
         "@eigen",
     ],
 )
-

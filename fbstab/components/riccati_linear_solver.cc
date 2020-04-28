@@ -1,10 +1,9 @@
 #include "fbstab/components/riccati_linear_solver.h"
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
-
-#include <Eigen/Dense>
 
 #include "fbstab/components/mpc_data.h"
 #include "fbstab/components/mpc_residual.h"
@@ -83,7 +82,7 @@ bool RiccatiLinearSolver::Initialize(const MpcVariable& x,
         "In RiccatiLinearSolver::Initialize: x and xbar have mismatched "
         "problem data.");
   }
-  if (!MpcVariable::SameSize(x, xbar)) {
+  if (!x.SameSize(xbar)) {
     throw std::runtime_error(
         "In RiccatiLinearSolver::Initialize: x and xbar are not the same "
         "size.");

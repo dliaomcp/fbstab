@@ -16,7 +16,7 @@ namespace fbstab {
  * or primal infeasibility. It implements
  * Algorithm 3 of https://arxiv.org/pdf/1901.04046.pdf.
  */
-class MpcFeasibility {
+class MpcFeasibility : public FeasibilityResidual<MpcVariable> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(MpcFeasibility)
   /**

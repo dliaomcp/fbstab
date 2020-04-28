@@ -1,9 +1,8 @@
 #include "fbstab/components/mpc_variable.h"
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <memory>
-
-#include <Eigen/Dense>
 
 #include "fbstab/components/mpc_data.h"
 #include "tools/utilities.h"
@@ -128,8 +127,8 @@ double MpcVariable::Norm() const {
   return sqrt(t1 * t1 + t2 * t2 + t3 * t3);
 }
 
-bool MpcVariable::SameSize(const MpcVariable& x, const MpcVariable& y) {
-  return (x.nz_ == y.nz_ && x.nl_ == y.nl_ && x.nv_ == y.nv_);
+bool MpcVariable::SameSize(const MpcVariable& x) const {
+  return (x.nz_ == nz_ && x.nl_ == nl_ && x.nv_ == nv_);
 }
 
 }  // namespace fbstab

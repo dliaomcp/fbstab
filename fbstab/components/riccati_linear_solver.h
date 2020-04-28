@@ -3,6 +3,7 @@
 #include <Eigen/Dense>
 #include <vector>
 
+#include "fbstab/components/abstract_components.h"
 #include "fbstab/components/mpc_data.h"
 #include "fbstab/components/mpc_residual.h"
 #include "fbstab/components/mpc_variable.h"
@@ -46,7 +47,7 @@ class MpcComponentUnitTests;
  * missing a residual term. This class contains mutable members as is thus not
  * thread safe.
  */
-class RiccatiLinearSolver {
+class RiccatiLinearSolver : public LinearSolver<MpcVariable, MpcResidual> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(RiccatiLinearSolver)
   /**

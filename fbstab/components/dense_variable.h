@@ -1,9 +1,9 @@
 #pragma once
 
+#include <Eigen/Dense>
 #include <memory>
 
-#include <Eigen/Dense>
-
+#include "fbstab/components/abstract_components.h"
 #include "fbstab/components/dense_data.h"
 #include "tools/copyable_macros.h"
 
@@ -25,7 +25,7 @@ namespace fbstab {
  * length(v) = nv
  * length(y) = nv
  */
-class DenseVariable {
+class DenseVariable : public Variable<DenseVariable, DenseData> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseVariable)
 
