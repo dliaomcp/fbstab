@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Eigen/Dense>
+
 namespace fbstab {
 
 /**
@@ -23,6 +25,35 @@ class Data {
  public:
   virtual ~Data() = 0;
 
+  /** Performs the operation y <- a*H*x + b*y */
+  virtual void gemvH(const Eigen::VectorXd& x, double a, double b,
+                     Eigen::VectorXd* y) const = 0;
+
+  /** Performs the operation y <- a*A*x + b*y */
+  virtual void gemvA(const Eigen::VectorXd& x, double a, double b,
+                     Eigen::VectorXd* y) const = 0;
+
+  /** Performs the operation y <- a*G*x + b*y */
+  virtual void gemvG(const Eigen::VectorXd& x, double a, double b,
+                     Eigen::VectorXd* y) const = 0;
+
+  /** Performs the operation y <- a*A'*x + b*y */
+  virtual void gemvAT(const Eigen::VectorXd& x, double a, double b,
+                      Eigen::VectorXd* y) const = 0;
+
+  /** Performs the operation y <- a*G'*x + b*y */
+  virtual void gemvGT(const Eigen::VectorXd& x, double a, double b,
+                      Eigen::VectorXd* y) const = 0;
+
+  /** Performs the operation y <- a*f + y */
+  virtual void axpyf(double a, Eigen::VectorXd* y) const = 0;
+
+  /** Performs the operation y <- a*h + y */
+  virtual void axpyh(double a, Eigen::VectorXd* y) const = 0;
+
+  /** Performs the operation y <- a*b + y */
+  virtual void axpyb(double a, Eigen::VectorXd* y) const = 0;
+
   /**
    * Norm of the forcing term.
    * @return ||(f,h,b)||
@@ -40,7 +71,7 @@ inline Data::~Data(){};
  * - v: Inequality duals
  * - y: Inequality margins
  */
-template <class Derived, class Data>
+template <class Derived>
 class Variable {
  public:
   virtual ~Variable() = 0;
@@ -92,8 +123,8 @@ class Variable {
   virtual double Norm() const = 0;
 };
 
-template <class Derived, class Data>
-inline Variable<Derived, Data>::~Variable(){};
+template <class Derived>
+inline Variable<Derived>::~Variable(){};
 
 /**
  * This class computes and stores residuals for various reformulations of the
@@ -116,6 +147,12 @@ class Residual {
    */
   virtual void SetAlpha(double alpha) = 0;
 
+  /**
+   * Links to problem data needed to perform calculations.
+   * Calculations cannot be performed until a data object is provided.
+   * @param[in] data pointer to the problem data
+   */
+  virtual void LinkData(const Data* data) = 0;
   /**
    * Fills storage with a.
    * @param[in] a
@@ -207,6 +244,14 @@ class FeasibilityResidual {
   };
 
   virtual ~FeasibilityResidual() = 0;
+
+  /**
+   * Links to problem data needed to perform calculations.
+   * Calculations cannot be performed until a data object is provided.
+   * @param[in] data pointer to the problem data
+   */
+  virtual void LinkData(const Data* data) = 0;
+
   /**
    * Checks to see if x is an infeasibility certificate for the QP and stores
    * the result internally.
@@ -241,7 +286,7 @@ inline FeasibilityResidual<Variable>::~FeasibilityResidual(){};
  *     V(x,xbar,sigma)*dx = r.
  *
  */
-template <class Variable, class Residual>
+template <class Variable, class Residual, class Data>
 class LinearSolver {
  public:
   virtual ~LinearSolver() = 0;
@@ -252,6 +297,13 @@ class LinearSolver {
    * @param[in] alpha
    */
   virtual void SetAlpha(double alpha) = 0;
+
+  /**
+   * Links to problem data needed to perform calculations.
+   * Calculations cannot be performed until a data object is provided.
+   * @param[in] data pointer to the problem data
+   */
+  virtual void LinkData(const Data* data) = 0;
 
   /**
    * Prepares to solve V(x,xbar,s) dx = r.
@@ -279,7 +331,7 @@ class LinearSolver {
   virtual bool Solve(const Residual& r, Variable* dx) const = 0;
 };
 
-template <class Variable, class Residual>
-inline LinearSolver<Variable, Residual>::~LinearSolver(){};
+template <class Variable, class Residual, class Data>
+inline LinearSolver<Variable, Residual, Data>::~LinearSolver(){};
 
 }  // namespace fbstab

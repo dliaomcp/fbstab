@@ -4,10 +4,10 @@
 #include <memory>
 #include <vector>
 
+#include "fbstab/components/full_feasibility.h"
+#include "fbstab/components/full_residual.h"
+#include "fbstab/components/full_variable.h"
 #include "fbstab/components/mpc_data.h"
-#include "fbstab/components/mpc_feasibility.h"
-#include "fbstab/components/mpc_residual.h"
-#include "fbstab/components/mpc_variable.h"
 #include "fbstab/components/riccati_linear_solver.h"
 #include "fbstab/fbstab_algorithm.h"
 #include "tools/copyable_macros.h"
@@ -15,8 +15,8 @@
 namespace fbstab {
 
 /** Convenience typedef for the templated version of the algorithm.*/
-using FBstabAlgoMpc = FBstabAlgorithm<MpcVariable, MpcResidual, MpcData,
-                                      RiccatiLinearSolver, MpcFeasibility>;
+using FBstabAlgoMpc = FBstabAlgorithm<FullVariable, FullResidual, MpcData,
+                                      RiccatiLinearSolver, FullFeasibility>;
 
 /**
  * FBstabMpc implements the Proximally Stabilized Semismooth Method for
@@ -193,14 +193,14 @@ class FBstabMpc {
   Options opts_;
 
   std::unique_ptr<FBstabAlgoMpc> algorithm_;
-  std::unique_ptr<MpcVariable> x1_;
-  std::unique_ptr<MpcVariable> x2_;
-  std::unique_ptr<MpcVariable> x3_;
-  std::unique_ptr<MpcVariable> x4_;
-  std::unique_ptr<MpcResidual> r1_;
-  std::unique_ptr<MpcResidual> r2_;
+  std::unique_ptr<FullVariable> x1_;
+  std::unique_ptr<FullVariable> x2_;
+  std::unique_ptr<FullVariable> x3_;
+  std::unique_ptr<FullVariable> x4_;
+  std::unique_ptr<FullResidual> r1_;
+  std::unique_ptr<FullResidual> r2_;
   std::unique_ptr<RiccatiLinearSolver> linear_solver_;
-  std::unique_ptr<MpcFeasibility> feasibility_checker_;
+  std::unique_ptr<FullFeasibility> feasibility_checker_;
 };
 
 }  // namespace fbstab

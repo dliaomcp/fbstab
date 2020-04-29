@@ -4,9 +4,9 @@
 #include <vector>
 
 #include "fbstab/components/abstract_components.h"
+#include "fbstab/components/full_residual.h"
+#include "fbstab/components/full_variable.h"
 #include "fbstab/components/mpc_data.h"
-#include "fbstab/components/mpc_residual.h"
-#include "fbstab/components/mpc_variable.h"
 #include "tools/copyable_macros.h"
 
 namespace fbstab {
@@ -47,7 +47,8 @@ class MpcComponentUnitTests;
  * missing a residual term. This class contains mutable members as is thus not
  * thread safe.
  */
-class RiccatiLinearSolver : public LinearSolver<MpcVariable, MpcResidual> {
+class RiccatiLinearSolver
+    : public LinearSolver<FullVariable, FullResidual, MpcData> {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(RiccatiLinearSolver)
   /**
@@ -69,6 +70,7 @@ class RiccatiLinearSolver : public LinearSolver<MpcVariable, MpcResidual> {
    */
   void SetAlpha(double alpha) { alpha_ = alpha; }
 
+  void LinkData(const MpcData* data) { data_ = data; }
   /**
    * Computes then factors the matrix V(x,xbar,sigma) using a Riccati
    * recursion.
@@ -84,7 +86,8 @@ class RiccatiLinearSolver : public LinearSolver<MpcVariable, MpcResidual> {
    * Throws a runtime_error if x and xbar aren't the correct size,
    * sigma is negative or the problem data isn't linked.
    */
-  bool Initialize(const MpcVariable& x, const MpcVariable& xbar, double sigma);
+  bool Initialize(const FullVariable& x, const FullVariable& xbar,
+                  double sigma);
 
   /**
    * Solves the system V*x = r and stores the result in x.
@@ -98,7 +101,7 @@ class RiccatiLinearSolver : public LinearSolver<MpcVariable, MpcResidual> {
    * Throws a runtime_error if x and r aren't the correct sizes,
    * if x is null or if the problem data isn't linked.
    */
-  bool Solve(const MpcResidual& r, MpcVariable* dx) const;
+  bool Solve(const FullResidual& r, FullVariable* dx) const;
 
  private:
   // Workspace matrices.

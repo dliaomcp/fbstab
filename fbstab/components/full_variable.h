@@ -4,7 +4,6 @@
 #include <memory>
 
 #include "fbstab/components/abstract_components.h"
-#include "fbstab/components/mpc_data.h"
 #include "tools/copyable_macros.h"
 
 namespace fbstab {
@@ -30,20 +29,19 @@ class MpcComponentUnitTests;
  * length(v) = nv = nc*(N+1)
  * length(y) = nv = nc*(N+1)
  */
-class MpcVariable : Variable<MpcVariable, MpcData> {
+class FullVariable : Variable<FullVariable> {
  public:
-  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(MpcVariable)
+  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FullVariable)
   /**
    * Allocates memory for a primal-dual variable.
    *
-   * @param[in] N  horizon length
-   * @param[in] nx number of states
-   * @param[in] nu number of control input
-   * @param[in] nc number of constraints per stage
+   * @param[in] nz number decision variables
+   * @param[in] nl number of equality constraints
+   * @param[in] nv number of inequality constraints
    *
    * Throws a runtime_error if any of the inputs are non-positive.
    */
-  MpcVariable(int N, int nx, int nu, int nc);
+  FullVariable(int nz, int nl, int nv);
 
   /**
    * Creates a primal-dual variable using preallocated memory.
@@ -56,15 +54,15 @@ class MpcVariable : Variable<MpcVariable, MpcData> {
    * Throws a runtime_error if sizes are mismatched or if any of the inputs are
    * null.
    */
-  MpcVariable(Eigen::VectorXd* z, Eigen::VectorXd* l, Eigen::VectorXd* v,
-              Eigen::VectorXd* y);
+  FullVariable(Eigen::VectorXd* z, Eigen::VectorXd* l, Eigen::VectorXd* v,
+               Eigen::VectorXd* y);
 
   /**
    * Links to problem data needed to perform calculations.
    * Calculations cannot be performed until a data object is provided.
    * @param[in] data pointer to the problem data
    */
-  void LinkData(const MpcData* data) { data_ = data; }
+  void LinkData(const Data* data) { data_ = data; }
 
   /**
    * Fills the variable with one value.
@@ -91,13 +89,13 @@ class MpcVariable : Variable<MpcVariable, MpcData> {
    *
    * Throws a runtime_error if problem data hasn't been provided.
    */
-  void axpy(double a, const MpcVariable& x);
+  void axpy(double a, const FullVariable& x);
 
   /**
    * Deep copies x into this.
    * @param[in] x variable to be copied.
    */
-  void Copy(const MpcVariable& x);
+  void Copy(const FullVariable& x);
 
   /**
    * Projects the inequality duals onto the non-negative orthant,
@@ -112,7 +110,7 @@ class MpcVariable : Variable<MpcVariable, MpcData> {
   double Norm() const;
 
   /** Returns true if x and *this have the same dimensions. */
-  bool SameSize(const MpcVariable& x) const;
+  bool SameSize(const FullVariable& x) const;
 
   /** Accessor for the decision variable. */
   Eigen::VectorXd& z() { return *z_; }
@@ -142,20 +140,15 @@ class MpcVariable : Variable<MpcVariable, MpcData> {
   std::unique_ptr<Eigen::VectorXd> v_storage_;
   std::unique_ptr<Eigen::VectorXd> y_storage_;
 
-  int N_ = 0;   // horizon length
-  int nx_ = 0;  // number of states
-  int nu_ = 0;  // number of controls
-  int nc_ = 0;  // constraints per stage
   int nz_ = 0;  // number of primal variables
   int nl_ = 0;  // number of equality duals
   int nv_ = 0;  // number of inequality duals
-  const MpcData* data_ = nullptr;
+  const Data* data_ = nullptr;
 
-  // Getter for data_ with a nullptr check.
-  const MpcData* data() const;
+  void NullDataCheck() const;
 
-  friend class MpcResidual;
-  friend class MpcFeasibility;
+  friend class FullResidual;
+  friend class FullFeasibility;
   friend class RiccatiLinearSolver;
   friend class FBstabMpc;
 };

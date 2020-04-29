@@ -5,9 +5,9 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "fbstab/components/full_residual.h"
+#include "fbstab/components/full_variable.h"
 #include "fbstab/components/mpc_data.h"
-#include "fbstab/components/mpc_residual.h"
-#include "fbstab/components/mpc_variable.h"
 
 namespace fbstab {
 
@@ -74,10 +74,9 @@ RiccatiLinearSolver::RiccatiLinearSolver(int N, int nx, int nu, int nc) {
   r3_.resize(nv_);
 }
 
-bool RiccatiLinearSolver::Initialize(const MpcVariable& x,
-                                     const MpcVariable& xbar, double sigma) {
-  const MpcData* const data = x.data();
-  if (xbar.data_ != data) {
+bool RiccatiLinearSolver::Initialize(const FullVariable& x,
+                                     const FullVariable& xbar, double sigma) {
+  if (xbar.data_ != data_) {
     throw std::runtime_error(
         "In RiccatiLinearSolver::Initialize: x and xbar have mismatched "
         "problem data.");
@@ -103,14 +102,14 @@ bool RiccatiLinearSolver::Initialize(const MpcVariable& x,
   }
   // Compute the barrier augmented Hessian.
   for (int i = 0; i < N_ + 1; i++) {
-    const MatrixXd& Ei = (*data->E_)[i];
-    const MatrixXd& Li = (*data->L_)[i];
+    const MatrixXd& Ei = (*data_->E_)[i];
+    const MatrixXd& Li = (*data_->L_)[i];
 
     Q_[i].triangularView<Eigen::Lower>() =
-        (*data->Q_)[i] + sigma * MatrixXd::Identity(nx_, nx_);
+        (*data_->Q_)[i] + sigma * MatrixXd::Identity(nx_, nx_);
     R_[i].triangularView<Eigen::Lower>() =
-        (*data->R_)[i] + sigma * MatrixXd::Identity(nu_, nu_);
-    S_[i] = (*data->S_)[i];
+        (*data_->R_)[i] + sigma * MatrixXd::Identity(nu_, nu_);
+    S_[i] = (*data_->S_)[i];
 
     // Add barriers associated with E(i)x(i) + L(i)u(i) + d(i) <=0
     // Q(i) += E(i)'*diag(Gamma(i))*E(i)
@@ -148,7 +147,7 @@ bool RiccatiLinearSolver::Initialize(const MpcVariable& x,
     FBSTAB_LLT_CHECK(llt1);
 
     // Compute AM = A*inv(M)'.
-    AM_[i] = (*data->A_)[i];
+    AM_[i] = (*data_->A_)[i];
     M_[i]
         .triangularView<Eigen::Lower>()
         .transpose()
@@ -169,7 +168,7 @@ bool RiccatiLinearSolver::Initialize(const MpcVariable& x,
     // Compute P = (A*inv(QQ)S' - B)*inv(SG)',
     //           = (AM*SM' - B)*inv(SG)'.
     P_[i].noalias() = AM_[i] * SM_[i].transpose();
-    P_[i] -= (*data->B_)[i];
+    P_[i] -= (*data_->B_)[i];
     SG_[i]
         .triangularView<Eigen::Lower>()
         .transpose()
@@ -210,17 +209,18 @@ bool RiccatiLinearSolver::Initialize(const MpcVariable& x,
   return true;
 }
 
-bool RiccatiLinearSolver::Solve(const MpcResidual& r, MpcVariable* dx) const {
-  const MpcData* const data = dx->data();
+bool RiccatiLinearSolver::Solve(const FullResidual& r, FullVariable* dx) const {
   if (r.nz_ != dx->nz_ || r.nl_ != dx->nl_ || r.nv_ != dx->nv_) {
     throw std::runtime_error(
         "In RiccatiLinearSolver::Solve: r and dx size mismatch.");
   }
+  // null data check
+
   // Compute the post-elimination residual,
   // r1 = rz - A'*(rv./mus) and r2 = -rl.
   r1_ = r.z_;
   r3_ = r.v_.cwiseQuotient(mus_);  // r3_ is used as a temp here
-  data->gemvAT(r3_, -1.0, 1.0, &r1_);
+  data_->gemvAT(r3_, -1.0, 1.0, &r1_);
   r2_ = -r.l_;
   // Get reshaped aliases for r1 and r2.
   Eigen::Map<MatrixXd> r1(r1_.data(), nx_ + nu_, N_ + 1);
@@ -330,14 +330,14 @@ bool RiccatiLinearSolver::Solve(const MpcResidual& r, MpcVariable* dx) const {
   VectorXd& dv = dx->v();
   dv = r.v_;
   // r3_ = A*dz, r3_ is being used as a temp.
-  data->gemvA(dx->z(), 1.0, 0.0, &r3_);
+  data_->gemvA(dx->z(), 1.0, 0.0, &r3_);
   dv += gamma_.asDiagonal() * r3_;
   dv = dv.cwiseQuotient(mus_);
 
   // Compute dy = b - A*dz.
   VectorXd& dy = dx->y();
-  data->gemvA(dx->z(), -1.0, 0.0, &dy);
-  data->axpyb(1.0, &dy);
+  data_->gemvA(dx->z(), -1.0, 0.0, &dy);
+  data_->axpyb(1.0, &dy);
 
   return true;
 }

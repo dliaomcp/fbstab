@@ -439,6 +439,11 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   xp_->LinkData(qp_data);
   x0->LinkData(qp_data);
 
+  rk_->LinkData(qp_data);
+  ri_->LinkData(qp_data);
+  feasibility_->LinkData(qp_data);
+  linear_solver_->LinkData(qp_data);
+
   // Initialization phase.
   const double sigma = opts_.sigma0;
   combo_tol_ = opts_.abs_tol + opts_.rel_tol * (1.0 + qp_data->ForcingNorm());

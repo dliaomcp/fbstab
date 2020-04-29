@@ -3,8 +3,7 @@
 #include <Eigen/Dense>
 
 #include "fbstab/components/abstract_components.h"
-#include "fbstab/components/mpc_data.h"
-#include "fbstab/components/mpc_variable.h"
+#include "fbstab/components/full_variable.h"
 #include "tools/copyable_macros.h"
 
 namespace fbstab {
@@ -23,21 +22,20 @@ class MpcComponentUnitTests;
  * - l: Equality residual
  * - v: Inequality/complimentarity residual
  */
-class MpcResidual : public Residual<MpcResidual, MpcVariable> {
+class FullResidual : public Residual<FullResidual, FullVariable> {
  public:
-  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(MpcResidual)
+  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FullResidual)
   /**
    * Allocates memory for the residual.
    *
-   * @param[in] N  horizon length
-   * @param[in] nx number of states
-   * @param[in] nu number of control input
-   * @param[in] nc number of constraints per stage
+   * @param[in] nz number of decision variables
+   * @param[in] nl number of equality constraints
+   * @param[in] nv number of inequality constraints
    *
    * Throws a runtime_error if any of the inputs
    * are non-positive.
    */
-  MpcResidual(int N, int nx, int nu, int nc);
+  FullResidual(int nz, int nl, int nv);
 
   /**
    * Sets the value of alpha used in residual computations,
@@ -45,6 +43,13 @@ class MpcResidual : public Residual<MpcResidual, MpcVariable> {
    * @param[in] alpha
    */
   void SetAlpha(double alpha) { alpha_ = alpha; }
+
+  /**
+   * Links to problem data needed to perform calculations.
+   * Calculations cannot be performed until a data object is provided.
+   * @param[in] data pointer to the problem data
+   */
+  void LinkData(const Data* data) { data_ = data; }
 
   /**
    * Fills the storage with all a.
@@ -83,7 +88,7 @@ class MpcResidual : public Residual<MpcResidual, MpcVariable> {
    * Throws a runtime_error if sigma isn't positive,
    * or if x and xbar aren't the same size.
    */
-  void InnerResidual(const MpcVariable& x, const MpcVariable& xbar,
+  void InnerResidual(const FullVariable& x, const FullVariable& xbar,
                      double sigma);
 
   /**
@@ -94,7 +99,7 @@ class MpcResidual : public Residual<MpcResidual, MpcVariable> {
    *
    * @param[in] x Evaluation point.
    */
-  void NaturalResidual(const MpcVariable& x);
+  void NaturalResidual(const FullVariable& x);
 
   /**
    * Computes the natural residual function augmented with
@@ -104,7 +109,7 @@ class MpcResidual : public Residual<MpcResidual, MpcVariable> {
    *
    * @param[in] x Evaluation point.
    */
-  void PenalizedNaturalResidual(const MpcVariable& x);
+  void PenalizedNaturalResidual(const FullVariable& x);
 
   /** Norm of the stationarity residual. */
   double z_norm() const { return znorm_; }
@@ -117,6 +122,9 @@ class MpcResidual : public Residual<MpcResidual, MpcVariable> {
   Eigen::VectorXd z_;  // stationarity residual
   Eigen::VectorXd l_;  // equality residual
   Eigen::VectorXd v_;  // complimentarity residual
+
+  const Data* data_ = nullptr;
+  void NullDataCheck() const;
 
   int N_ = 0;   // horizon length
   int nx_ = 0;  // number of states

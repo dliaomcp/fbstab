@@ -115,11 +115,11 @@ fbstab_cc_library(
 )
 
 fbstab_cc_library(
-    name = "mpc_variable",
-    srcs = ["mpc_variable.cc"],
+    name = "full_variable",
+    srcs = ["full_variable.cc"],
     hdrs = [
         "abstract_components.h",
-        "mpc_variable.h",
+        "full_variable.h",
     ],
     deps = [
         ":mpc_data",
@@ -129,30 +129,30 @@ fbstab_cc_library(
 )
 
 fbstab_cc_library(
-    name = "mpc_residual",
-    srcs = ["mpc_residual.cc"],
+    name = "full_residual",
+    srcs = ["full_residual.cc"],
     hdrs = [
         "abstract_components.h",
-        "mpc_residual.h",
+        "full_residual.h",
     ],
     deps = [
         ":mpc_data",
-        ":mpc_variable",
+        ":full_variable",
         "//tools:essential",
         "@eigen",
     ],
 )
 
 fbstab_cc_library(
-    name = "mpc_feasibility",
-    srcs = ["mpc_feasibility.cc"],
+    name = "full_feasibility",
+    srcs = ["full_feasibility.cc"],
     hdrs = [
         "abstract_components.h",
-        "mpc_feasibility.h",
+        "full_feasibility.h",
     ],
     deps = [
         ":mpc_data",
-        ":mpc_variable",
+        ":full_variable",
         "//tools:essential",
         "@eigen",
     ],
@@ -167,8 +167,8 @@ fbstab_cc_library(
     ],
     deps = [
         ":mpc_data",
-        ":mpc_residual",
-        ":mpc_variable",
+        ":full_residual",
+        ":full_variable",
         "//tools:essential",
         "@eigen",
     ],
@@ -182,9 +182,9 @@ fbstab_cc_googletest(
     ],
     deps = [
         ":mpc_data",
-        ":mpc_feasibility",
-        ":mpc_residual",
-        ":mpc_variable",
+        ":full_feasibility",
+        ":full_residual",
+        ":full_variable",
         ":riccati_linear_solver",
         "//tools:essential",
         "@eigen",

@@ -5,10 +5,10 @@
 #include <stdexcept>
 #include <vector>
 
+#include "fbstab/components/full_feasibility.h"
+#include "fbstab/components/full_residual.h"
+#include "fbstab/components/full_variable.h"
 #include "fbstab/components/mpc_data.h"
-#include "fbstab/components/mpc_feasibility.h"
-#include "fbstab/components/mpc_residual.h"
-#include "fbstab/components/mpc_variable.h"
 #include "fbstab/components/riccati_linear_solver.h"
 #include "tools/utilities.h"
 
@@ -29,16 +29,17 @@ FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
   nv_ = nc * (N + 1);
 
   // create the components
-  x1_ = tools::make_unique<MpcVariable>(N, nx, nu, nc);
-  x2_ = tools::make_unique<MpcVariable>(N, nx, nu, nc);
-  x3_ = tools::make_unique<MpcVariable>(N, nx, nu, nc);
-  x4_ = tools::make_unique<MpcVariable>(N, nx, nu, nc);
+  x1_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
+  x2_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
+  x3_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
+  x4_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
 
-  r1_ = tools::make_unique<MpcResidual>(N, nx, nu, nc);
-  r2_ = tools::make_unique<MpcResidual>(N, nx, nu, nc);
+  r1_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
+  r2_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
 
+  feasibility_checker_ = tools::make_unique<FullFeasibility>(nz_, nl_, nv_);
   linear_solver_ = tools::make_unique<RiccatiLinearSolver>(N, nx, nu, nc);
-  feasibility_checker_ = tools::make_unique<MpcFeasibility>(N, nx, nu, nc);
+
   algorithm_ = tools::make_unique<FBstabAlgoMpc>(
       x1_.get(), x2_.get(), x3_.get(), x4_.get(), r1_.get(), r2_.get(),
       linear_solver_.get(), feasibility_checker_.get());
@@ -50,7 +51,7 @@ SolverOut FBstabMpc::Solve(const QPData& qp, const QPVariable* x,
                            bool use_initial_guess) {
   MpcData data(qp.Q, qp.R, qp.S, qp.q, qp.r, qp.A, qp.B, qp.c, qp.E, qp.L, qp.d,
                qp.x0);
-  MpcVariable x0(x->z, x->l, x->v, x->y);
+  FullVariable x0(x->z, x->l, x->v, x->y);
 
   if (data.N_ != N_ || data.nx_ != nx_ || data.nu_ != nu_ || data.nc_ != nc_) {
     throw std::runtime_error(
@@ -88,7 +89,7 @@ FBstabMpc::Options FBstabMpc::ReliableOptions() {
 }
 
 // Explicit instantiation.
-template class FBstabAlgorithm<MpcVariable, MpcResidual, MpcData,
-                               RiccatiLinearSolver, MpcFeasibility>;
+template class FBstabAlgorithm<FullVariable, FullResidual, MpcData,
+                               RiccatiLinearSolver, FullFeasibility>;
 
 }  // namespace fbstab
