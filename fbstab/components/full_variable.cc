@@ -42,9 +42,8 @@ FullVariable::FullVariable(VectorXd* z, VectorXd* l, VectorXd* v, VectorXd* y) {
     throw std::runtime_error(
         "Inputs to FullVariable::FullVariable cannot be null.");
   }
-  if (z->size() == 0 || l->size() == 0 || v->size() == 0 || y->size() == 0) {
-    throw std::runtime_error(
-        "All size inputs to FullVariable::FullVariable must be >= 1.");
+  if (z->size() == 0 || v->size() == 0 || y->size() == 0) {
+    throw std::runtime_error("Invalid input to FullVariable.");
   }
   if (v->size() != y->size()) {
     throw std::runtime_error(

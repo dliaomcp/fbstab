@@ -9,112 +9,6 @@ load(
 package(default_visibility = ["//fbstab:__pkg__"])
 
 fbstab_cc_library(
-    name = "dense_data",
-    srcs = ["dense_data.cc"],
-    hdrs = [
-        "abstract_components.h",
-        "dense_data.h",
-    ],
-    deps = [
-        "//tools:essential",
-        "@eigen",
-    ],
-)
-
-fbstab_cc_library(
-    name = "dense_variable",
-    srcs = ["dense_variable.cc"],
-    hdrs = [
-        "abstract_components.h",
-        "dense_variable.h",
-    ],
-    deps = [
-        ":dense_data",
-        "//tools:essential",
-        "@eigen",
-    ],
-)
-
-fbstab_cc_library(
-    name = "dense_residual",
-    srcs = ["dense_residual.cc"],
-    hdrs = [
-        "abstract_components.h",
-        "dense_residual.h",
-    ],
-    deps = [
-        ":dense_data",
-        ":dense_variable",
-        "//tools:essential",
-        "@eigen",
-    ],
-)
-
-fbstab_cc_library(
-    name = "dense_feasibility",
-    srcs = [
-        "dense_feasibility.cc",
-    ],
-    hdrs = [
-        "abstract_components.h",
-        "dense_feasibility.h",
-    ],
-    deps = [
-        ":dense_data",
-        ":dense_variable",
-        "//tools:essential",
-        "@eigen",
-    ],
-)
-
-fbstab_cc_library(
-    name = "dense_linear_solver",
-    srcs = [
-        "dense_linear_solver.cc",
-    ],
-    hdrs = [
-        "abstract_components.h",
-        "dense_linear_solver.h",
-    ],
-    deps = [
-        ":dense_data",
-        ":dense_residual",
-        ":dense_variable",
-        "//tools:essential",
-        "@eigen",
-    ],
-)
-
-fbstab_cc_googletest(
-    name = "dense_unit_tests",
-    srcs = [
-        "test/dense_unit_tests.cc",
-        "test/dense_unit_tests.h",
-    ],
-    deps = [
-        ":dense_data",
-        ":dense_feasibility",
-        ":dense_linear_solver",
-        ":dense_residual",
-        ":dense_variable",
-        "//tools:essential",
-    ],
-)
-
-fbstab_cc_library(
-    name = "mpc_data",
-    srcs = ["mpc_data.cc"],
-    hdrs = [
-        "abstract_components.h",
-        "mpc_data.h",
-    ],
-    deps = [
-        "//tools:essential",
-        "@eigen",
-    ],
-)
-
-fbstab_cc_library(
     name = "full_variable",
     srcs = ["full_variable.cc"],
     hdrs = [
@@ -122,7 +16,6 @@ fbstab_cc_library(
         "full_variable.h",
     ],
     deps = [
-        ":mpc_data",
         "//tools:essential",
         "@eigen",
     ],
@@ -136,7 +29,6 @@ fbstab_cc_library(
         "full_residual.h",
     ],
     deps = [
-        ":mpc_data",
         ":full_variable",
         "//tools:essential",
         "@eigen",
@@ -151,8 +43,52 @@ fbstab_cc_library(
         "full_feasibility.h",
     ],
     deps = [
-        ":mpc_data",
         ":full_variable",
+        "//tools:essential",
+        "@eigen",
+    ],
+)
+
+
+fbstab_cc_library(
+    name = "dense_data",
+    srcs = ["dense_data.cc"],
+    hdrs = [
+        "abstract_components.h",
+        "dense_data.h",
+    ],
+    deps = [
+        "//tools:essential",
+        "@eigen",
+    ],
+)
+
+fbstab_cc_library(
+    name = "dense_cholesky_solver",
+    srcs = [
+        "dense_cholesky_solver.cc",
+    ],
+    hdrs = [
+        "abstract_components.h",
+        "dense_cholesky_solver.h",
+    ],
+    deps = [
+        ":dense_data",
+        ":full_residual",
+        ":full_variable",
+        "//tools:essential",
+        "@eigen",
+    ],
+)
+
+fbstab_cc_library(
+    name = "mpc_data",
+    srcs = ["mpc_data.cc"],
+    hdrs = [
+        "abstract_components.h",
+        "mpc_data.h",
+    ],
+    deps = [
         "//tools:essential",
         "@eigen",
     ],
@@ -171,6 +107,22 @@ fbstab_cc_library(
         ":full_variable",
         "//tools:essential",
         "@eigen",
+    ],
+)
+
+fbstab_cc_googletest(
+    name = "dense_unit_tests",
+    srcs = [
+        "test/dense_unit_tests.cc",
+        "test/dense_unit_tests.h",
+    ],
+    deps = [
+        ":dense_data",
+        ":full_feasibility",
+        ":dense_cholesky_solver",
+        ":full_residual",
+        ":full_variable",
+        "//tools:essential",
     ],
 )
 

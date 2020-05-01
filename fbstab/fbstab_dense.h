@@ -3,19 +3,19 @@
 #include <Eigen/Dense>
 #include <memory>
 
+#include "fbstab/components/dense_cholesky_solver.h"
 #include "fbstab/components/dense_data.h"
-#include "fbstab/components/dense_feasibility.h"
-#include "fbstab/components/dense_linear_solver.h"
-#include "fbstab/components/dense_residual.h"
-#include "fbstab/components/dense_variable.h"
+#include "fbstab/components/full_feasibility.h"
+#include "fbstab/components/full_residual.h"
+#include "fbstab/components/full_variable.h"
 #include "fbstab/fbstab_algorithm.h"
 #include "tools/copyable_macros.h"
 
 namespace fbstab {
 
-/** Convenience type for the templated dense version of the algorithm. */
-using FBstabAlgoDense = FBstabAlgorithm<DenseVariable, DenseResidual, DenseData,
-                                        DenseLinearSolver, DenseFeasibility>;
+/** Convenience typedef for the templated dense version of the algorithm. */
+using FBstabAlgoDense = FBstabAlgorithm<FullVariable, FullResidual, DenseData,
+                                        DenseCholeskySolver, FullFeasibility>;
 
 /**
  * FBstabDense implements the Proximally Stabilized Semismooth Algorithm
@@ -70,6 +70,8 @@ class FBstabDense {
   struct QPVariable {
     /// Decision variables in \reals^nz.
     Eigen::VectorXd* z = nullptr;
+    /// Equality duals
+    Eigen::VectorXd l;
     /// Inequality duals in \reals^nv.
     Eigen::VectorXd* v = nullptr;
     /// Constraint margin, i.e., y = b-Az, in \reals^nv.
@@ -83,24 +85,22 @@ class FBstabDense {
    * Allocates needed workspace given the dimensions of the QPs to
    * be solved. Throws a runtime_error if any inputs are non-positive.
    *
-   * @param[in] num_variables
-   * @param[in] num_constraints
+   * @param[in] number of decision variables
+   * @param[in] number of inequality constraints
    */
-  FBstabDense(int num_variables, int num_constraints);
+  FBstabDense(int nz, int nv);
 
   /**
    * Solves an instance of (1)
    *
    * @param[in]   qp  problem data
-   *
    * @param[in,out] x   initial guess, overwritten with the solution
-   *
    * @param[in] use_initial_guess if false the solver is initialized at the
    * origin.
    *
    * @return Summary of the optimizer output, see fbstab_algorithm.h.
    */
-  SolverOut Solve(const QPData& qp, const QPVariable* x,
+  SolverOut Solve(const QPData& qp, QPVariable* x,
                   bool use_initial_guess = true);
 
   /**
@@ -118,17 +118,18 @@ class FBstabDense {
  private:
   int nz_ = 0;
   int nv_ = 0;
+  int nl_ = 0;
 
   Options opts_;
   std::unique_ptr<FBstabAlgoDense> algorithm_;
-  std::unique_ptr<DenseVariable> x1_;
-  std::unique_ptr<DenseVariable> x2_;
-  std::unique_ptr<DenseVariable> x3_;
-  std::unique_ptr<DenseVariable> x4_;
-  std::unique_ptr<DenseResidual> r1_;
-  std::unique_ptr<DenseResidual> r2_;
-  std::unique_ptr<DenseLinearSolver> linear_solver_;
-  std::unique_ptr<DenseFeasibility> feasibility_checker_;
+  std::unique_ptr<FullVariable> x1_;
+  std::unique_ptr<FullVariable> x2_;
+  std::unique_ptr<FullVariable> x3_;
+  std::unique_ptr<FullVariable> x4_;
+  std::unique_ptr<FullResidual> r1_;
+  std::unique_ptr<FullResidual> r2_;
+  std::unique_ptr<DenseCholeskySolver> linear_solver_;
+  std::unique_ptr<FullFeasibility> feasibility_checker_;
 };
 
 }  // namespace fbstab

@@ -71,6 +71,7 @@ class RiccatiLinearSolver
   void SetAlpha(double alpha) { alpha_ = alpha; }
 
   void LinkData(const MpcData* data) { data_ = data; }
+
   /**
    * Computes then factors the matrix V(x,xbar,sigma) using a Riccati
    * recursion.
@@ -154,6 +155,8 @@ class RiccatiLinearSolver
   // Computes the gradient of the penalized fischer-burmeister (PFB)
   // function, (19) in https://arxiv.org/pdf/1901.04046.pdf.
   Eigen::Vector2d PFBGradient(double a, double b) const;
+
+  void NullDataCheck() const;
 
   friend class test::MpcComponentUnitTests;
 };

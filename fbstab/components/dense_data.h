@@ -31,46 +31,55 @@ class DenseData : public Data {
    * Throws a runtime exception if any of the inputs are null or if
    * the sizes of the inputs are inconsistent.
    */
-  DenseData(const Eigen::MatrixXd *H, const Eigen::VectorXd *f,
-            const Eigen::MatrixXd *A, const Eigen::VectorXd *b);
+  DenseData(const Eigen::MatrixXd* H, const Eigen::VectorXd* f,
+            const Eigen::MatrixXd* A, const Eigen::VectorXd* b);
 
-  /** Read only accessor for the H matrix. */
-  const Eigen::MatrixXd &H() const { return *H_; }
+  /** Performs the operation y <- a*H*x + b*y */
+  void gemvH(const Eigen::VectorXd& x, double a, double b,
+             Eigen::VectorXd* y) const;
 
-  /** Read only accessor for the f vector. */
-  const Eigen::VectorXd &f() const { return *f_; }
+  /** Performs the operation y <- a*A*x + b*y */
+  void gemvA(const Eigen::VectorXd& x, double a, double b,
+             Eigen::VectorXd* y) const;
 
-  /** Read only accessor for the A matrix. */
-  const Eigen::MatrixXd &A() const { return *A_; }
+  /** Performs the operation y <- a*A'*x + b*y */
+  void gemvAT(const Eigen::VectorXd& x, double a, double b,
+              Eigen::VectorXd* y) const;
 
-  /** Read only accessor for the b vector. */
-  const Eigen::VectorXd &b() const { return *b_; }
+  /** Performs the operation y <- a*f + y */
+  void axpyf(double a, Eigen::VectorXd* y) const;
+
+  /** Performs the operation y <- a*b + y */
+  void axpyb(double a, Eigen::VectorXd* y) const;
+
+  // These are no-ops for the time being
+  /** Performs the operation y <- a*G*x + b*y */
+  void gemvG(const Eigen::VectorXd& x, double a, double b,
+             Eigen::VectorXd* y) const;
+
+  /** Performs the operation y <- a*G'*x + b*y */
+  void gemvGT(const Eigen::VectorXd& x, double a, double b,
+              Eigen::VectorXd* y) const;
+
+  /** Performs the operation y <- a*h + y */
+  void axpyh(double a, Eigen::VectorXd* y) const;
 
   double ForcingNorm() const { return forcing_norm_; }
-  /**
-   * @return number of decision variables (i.e., dimension of z)
-   */
-  int num_variables() const { return nz_; }
-  /**
-   * @return number of inequality constraints
-   */
-  int num_constraints() const { return nv_; }
 
  private:
   int nz_ = 0;  // Number of decision variables.
-  int nv_ = 0;  // Number of constraints.
+  int nl_ = 0;  // Number of equality constraints
+  int nv_ = 0;  // Number of inequality constraints.
 
   double forcing_norm_ = 0.0;
 
-  const Eigen::MatrixXd *const H_{nullptr};
-  const Eigen::VectorXd *const f_{nullptr};
-  const Eigen::MatrixXd *const A_{nullptr};
-  const Eigen::VectorXd *const b_{nullptr};
+  const Eigen::MatrixXd* H_ = nullptr;
+  const Eigen::VectorXd* f_ = nullptr;
+  const Eigen::MatrixXd* A_ = nullptr;
+  const Eigen::VectorXd* b_ = nullptr;
 
-  friend class DenseVariable;
-  friend class DenseResidual;
-  friend class DenseLinearSolver;
-  friend class DenseFeasibility;
+  friend class DenseCholeskySolver;
+  friend class FBstabDense;
 };
 
 }  // namespace fbstab

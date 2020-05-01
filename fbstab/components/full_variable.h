@@ -121,14 +121,23 @@ class FullVariable : Variable<FullVariable> {
   /** Accessor for the inequality margin. */
   Eigen::VectorXd& y() { return *y_; }
 
-  /** Accessor for the decision variable. */
+  /** Const accessor for the decision variable. */
   const Eigen::VectorXd& z() const { return *z_; }
-  /** Accessor for the co-state. */
+  /** Const accessor for the equality dual. */
   const Eigen::VectorXd& l() const { return *l_; }
-  /** Accessor for the dual variable. */
+  /** Const accessor for the dual variable. */
   const Eigen::VectorXd& v() const { return *v_; }
-  /** Accessor for the inequality margin. */
+  /** Const accessor for the inequality margin. */
   const Eigen::VectorXd& y() const { return *y_; }
+
+  /** Indexed accessor for the decision variable. */
+  double z(int i) const { return (*z_)(i); }
+  /** Indexed accessor for the equality dual. */
+  double l(int i) const { return (*l_)(i); }
+  /** Indexed accessor for the inequality dual. */
+  double v(int i) const { return (*v_)(i); }
+  /** Indexed accessor for the inequality margin. */
+  double y(int i) const { return (*y_)(i); }
 
  private:
   Eigen::VectorXd* z_ = nullptr;  // primal variable
@@ -150,6 +159,7 @@ class FullVariable : Variable<FullVariable> {
   friend class FullResidual;
   friend class FullFeasibility;
   friend class RiccatiLinearSolver;
+  friend class DenseCholeskySolver;
   friend class FBstabMpc;
 };
 

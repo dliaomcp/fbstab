@@ -4,34 +4,35 @@
 #include <memory>
 #include <stdexcept>
 
+#include "fbstab/components/dense_cholesky_solver.h"
 #include "fbstab/components/dense_data.h"
-#include "fbstab/components/dense_feasibility.h"
-#include "fbstab/components/dense_linear_solver.h"
-#include "fbstab/components/dense_residual.h"
-#include "fbstab/components/dense_variable.h"
+#include "fbstab/components/full_feasibility.h"
+#include "fbstab/components/full_residual.h"
+#include "fbstab/components/full_variable.h"
 #include "fbstab/fbstab_algorithm.h"
 #include "tools/utilities.h"
 
 namespace fbstab {
 
-FBstabDense::FBstabDense(int num_variables, int num_constraints) {
-  if (num_variables <= 0 || num_constraints <= 0) {
+FBstabDense::FBstabDense(int nz, int nv) {
+  if (nz <= 0 || nv <= 0) {
     throw std::runtime_error(
         "In FBstabDense::FBstabDense: Inputs must be positive.");
   }
-  nz_ = num_variables;
-  nv_ = num_constraints;
+  nz_ = nz;
+  nv_ = nv;
+  nl_ = 0;
 
-  x1_ = tools::make_unique<DenseVariable>(nz_, nv_);
-  x2_ = tools::make_unique<DenseVariable>(nz_, nv_);
-  x3_ = tools::make_unique<DenseVariable>(nz_, nv_);
-  x4_ = tools::make_unique<DenseVariable>(nz_, nv_);
+  x1_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
+  x2_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
+  x3_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
+  x4_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
 
-  r1_ = tools::make_unique<DenseResidual>(nz_, nv_);
-  r2_ = tools::make_unique<DenseResidual>(nz_, nv_);
+  r1_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
+  r2_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
 
-  linear_solver_ = tools::make_unique<DenseLinearSolver>(nz_, nv_);
-  feasibility_checker_ = tools::make_unique<DenseFeasibility>(nz_, nv_);
+  feasibility_checker_ = tools::make_unique<FullFeasibility>(nz_, nl_, nv_);
+  linear_solver_ = tools::make_unique<DenseCholeskySolver>(nz_, nv_);
 
   algorithm_ = tools::make_unique<FBstabAlgoDense>(
       x1_.get(), x2_.get(), x3_.get(), x4_.get(), r1_.get(), r2_.get(),
@@ -40,16 +41,18 @@ FBstabDense::FBstabDense(int num_variables, int num_constraints) {
   opts_ = DefaultOptions();
 }
 
-SolverOut FBstabDense::Solve(const QPData& qp, const QPVariable* x,
+SolverOut FBstabDense::Solve(const QPData& qp, QPVariable* x,
                              bool use_initial_guess) {
   DenseData data(qp.H, qp.f, qp.A, qp.b);
-  DenseVariable x0(x->z, x->v, x->y);
 
-  if (nz_ != data.num_variables() || nv_ != data.num_constraints()) {
+  // Temporary workaround:
+  FullVariable x0(x->z, &x->l, x->v, x->y);
+
+  if (nz_ != data.nz_ || nv_ != data.nv_) {
     throw std::runtime_error(
         "In FBstabDense::Solve: mismatch between *this and data dimensions.");
   }
-  if (nz_ != x0.num_variables() || nv_ != x0.num_constraints()) {
+  if (nz_ != x0.z().size() || nv_ != x0.v().size()) {
     throw std::runtime_error(
         "In FBstabDense::Solve: mismatch between *this and initial guess "
         "dimensions.");
@@ -80,7 +83,7 @@ FBstabDense::Options FBstabDense::ReliableOptions() {
 }
 
 // Explicit instantiation.
-template class FBstabAlgorithm<DenseVariable, DenseResidual, DenseData,
-                               DenseLinearSolver, DenseFeasibility>;
+template class FBstabAlgorithm<FullVariable, FullResidual, DenseData,
+                               DenseCholeskySolver, FullFeasibility>;
 
 }  // namespace fbstab

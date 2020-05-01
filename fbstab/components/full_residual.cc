@@ -108,6 +108,10 @@ void FullResidual::PenalizedNaturalResidual(const FullVariable& x) {
   vnorm_ = v_.norm();
 }
 
+bool FullResidual::SameSize(const FullVariable& x) const {
+  return (x.nz_ == nz_ && x.nl_ == nl_ && x.nv_ == nv_);
+}
+
 double FullResidual::pfb(double a, double b, double alpha) {
   double fb = a + b - sqrt(a * a + b * b);
   return alpha * fb + (1.0 - alpha) * std::max(0.0, a) * std::max(0.0, b);
@@ -116,8 +120,7 @@ double FullResidual::pfb(double a, double b, double alpha) {
 void FullResidual::NullDataCheck() const {
   if (data_ == nullptr) {
     throw std::runtime_error(
-        "FullResidual tried to access problem data before it's "
-        "linked.");
+        "FullResidual tried to access problem data before it's linked.");
   }
 }
 

@@ -4,8 +4,8 @@
 
 #include "fbstab/components/abstract_components.h"
 #include "fbstab/components/dense_data.h"
-#include "fbstab/components/dense_residual.h"
-#include "fbstab/components/dense_variable.h"
+#include "fbstab/components/full_residual.h"
+#include "fbstab/components/full_variable.h"
 #include "tools/copyable_macros.h"
 
 namespace fbstab {
@@ -31,23 +31,24 @@ class DenseComponentUnitTests;
  * right hand sides.
  *
  * This class has mutable fields and is thus not thread safe.
- *
- * Usage:
- * @code
- * DenseLinearSolver solver(2,2);
- * solver.Factor(x,xbar,sigma);
- * solver.Solve(r,&dx,sigma);
- * @endcode
  */
-class DenseLinearSolver : public LinearSolver<DenseVariable, DenseResidual> {
+class DenseCholeskySolver
+    : public LinearSolver<FullVariable, FullResidual, DenseData> {
  public:
-  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseLinearSolver)
+  FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseCholeskySolver)
   /**
    * Allocates workspace memory.
    * @param [nz] Number of decision variables.
    * @param [nv] Number of inequality constraints.
    */
-  DenseLinearSolver(int nz, int nv);
+  DenseCholeskySolver(int nz, int nv);
+
+  /**
+   * Links to problem data needed to perform calculations.
+   * Calculations cannot be performed until a data object is provided.
+   * @param[in] data pointer to the problem data
+   */
+  void LinkData(const DenseData* data) { data_ = data; }
 
   /**
    * Factors the matrix V(x,xbar,sigma) using a Schur complement approach
@@ -65,7 +66,7 @@ class DenseLinearSolver : public LinearSolver<DenseVariable, DenseResidual> {
    * Throws a runtime_error if x and xbar aren't the correct size,
    * sigma is negative or the problem data isn't linked.
    */
-  bool Initialize(const DenseVariable& x, const DenseVariable& xbar,
+  bool Initialize(const FullVariable& x, const FullVariable& xbar,
                   double sigma);
 
   /**
@@ -80,24 +81,26 @@ class DenseLinearSolver : public LinearSolver<DenseVariable, DenseResidual> {
    * Throws a runtime_error if x and r aren't the correct sizes,
    * if x is null or if the problem data isn't linked.
    */
-  bool Solve(const DenseResidual& r, DenseVariable* x) const;
+  bool Solve(const FullResidual& r, FullVariable* x) const;
 
   /**
    * Sets the alpha parameter defined in (19)
    * of https://arxiv.org/pdf/1901.04046.pdf.
    */
-  void SetAlpha(double alpha);
+  void SetAlpha(double alpha) { alpha_ = alpha; }
 
  private:
   friend class test::DenseComponentUnitTests;
   int nz_ = 0;  // number of decision variables
   int nv_ = 0;  // number of inequality constraints
 
-  double alpha_ = 0.95;  // See (19) in https://arxiv.org/pdf/1901.04046.pdf.
+  double alpha_ = 0.95;
   const double zero_tolerance_ = 1e-13;
+  const DenseData* data_ = nullptr;
 
   // workspace variables
   Eigen::MatrixXd K_;
+  Eigen::LDLT<Eigen::MatrixXd> ldlt_;
   mutable Eigen::VectorXd r1_;
   mutable Eigen::VectorXd r2_;
   Eigen::VectorXd Gamma_;
@@ -109,6 +112,8 @@ class DenseLinearSolver : public LinearSolver<DenseVariable, DenseResidual> {
   // function, (19) in https://arxiv.org/pdf/1901.04046.pdf.
   // See section 3.3.
   Eigen::Vector2d PFBGradient(double a, double b) const;
+
+  void NullDataCheck() const;
 };
 
 }  // namespace fbstab

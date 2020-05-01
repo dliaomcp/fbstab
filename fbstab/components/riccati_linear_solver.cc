@@ -76,11 +76,6 @@ RiccatiLinearSolver::RiccatiLinearSolver(int N, int nx, int nu, int nc) {
 
 bool RiccatiLinearSolver::Initialize(const FullVariable& x,
                                      const FullVariable& xbar, double sigma) {
-  if (xbar.data_ != data_) {
-    throw std::runtime_error(
-        "In RiccatiLinearSolver::Initialize: x and xbar have mismatched "
-        "problem data.");
-  }
   if (!x.SameSize(xbar)) {
     throw std::runtime_error(
         "In RiccatiLinearSolver::Initialize: x and xbar are not the same "
@@ -90,11 +85,13 @@ bool RiccatiLinearSolver::Initialize(const FullVariable& x,
     throw std::runtime_error(
         "In RiccatiLinearSolver::Initialize: sigma must be positive.");
   }
+  NullDataCheck();
+  // TODO: Add size check with the linear solver as well!
 
   Eigen::Vector2d temp;
   for (int i = 0; i < nv_; i++) {
-    const double ys = x.y()(i) + sigma * (x.v()(i) - xbar.v()(i));
-    temp = PFBGradient(ys, x.v()(i));
+    const double ys = x.y(i) + sigma * (x.v(i) - xbar.v(i));
+    temp = PFBGradient(ys, x.v(i));
 
     gamma_(i) = temp(0);
     mus_(i) = temp(1) + sigma * temp(0);
@@ -128,6 +125,8 @@ bool RiccatiLinearSolver::Initialize(const FullVariable& x,
   // Base case: L(0) = chol(sigma*I).
   L_[0] = sqrt(sigma) * MatrixXd::Identity(nx_, nx_);
 
+// TODO: Regularize if the factorization fails and retry
+// Correct for the error in a outer iterative refinement loop
 #define FBSTAB_LLT_CHECK(llt)           \
   {                                     \
     if (llt.info() != Eigen::Success) { \
@@ -210,11 +209,12 @@ bool RiccatiLinearSolver::Initialize(const FullVariable& x,
 }
 
 bool RiccatiLinearSolver::Solve(const FullResidual& r, FullVariable* dx) const {
-  if (r.nz_ != dx->nz_ || r.nl_ != dx->nl_ || r.nv_ != dx->nv_) {
+  if (!r.SameSize(*dx)) {
     throw std::runtime_error(
         "In RiccatiLinearSolver::Solve: r and dx size mismatch.");
   }
-  // null data check
+  NullDataCheck();
+  // TODO: Add size check against the *this
 
   // Compute the post-elimination residual,
   // r1 = rz - A'*(rv./mus) and r2 = -rl.
@@ -361,6 +361,14 @@ Eigen::Vector2d RiccatiLinearSolver::PFBGradient(double a, double b) const {
   }
 
   return v;
+}
+
+void RiccatiLinearSolver::NullDataCheck() const {
+  if (data_ == nullptr) {
+    throw std::runtime_error(
+        "RiccatiLinearSolver tried to access problem data before it's "
+        "linked.");
+  }
 }
 
 }  // namespace fbstab

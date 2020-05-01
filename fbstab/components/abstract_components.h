@@ -329,6 +329,10 @@ class LinearSolver {
    * @return          true if successful
    */
   virtual bool Solve(const Residual& r, Variable* dx) const = 0;
+
+  // TODO: Add Multiply function that computes y = V*x,
+  // to enable iterative refinement
+  // virtual void Multiply(const Variable& x, Variable* y) const = 0;
 };
 
 template <class Variable, class Residual, class Data>
