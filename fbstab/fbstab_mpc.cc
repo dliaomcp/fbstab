@@ -33,10 +33,8 @@ FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
   x2_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
   x3_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
   x4_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
-
   r1_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
   r2_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
-
   feasibility_checker_ = tools::make_unique<FullFeasibility>(nz_, nl_, nv_);
   linear_solver_ = tools::make_unique<RiccatiLinearSolver>(N, nx, nu, nc);
 
@@ -47,11 +45,15 @@ FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
   opts_ = DefaultOptions();
 }
 
-SolverOut FBstabMpc::Solve(const QPData& qp, const QPVariable* x,
+FBstabMpc::FBstabMpc(const Eigen::Vector4d& s)
+    : FBstabMpc(s(0), s(1), s(2), s(3)) {}
+
+SolverOut FBstabMpc::Solve(const ProblemData& qp, Variable* x,
                            bool use_initial_guess) {
-  MpcData data(qp.Q, qp.R, qp.S, qp.q, qp.r, qp.A, qp.B, qp.c, qp.E, qp.L, qp.d,
-               qp.x0);
-  FullVariable x0(x->z, x->l, x->v, x->y);
+  // The data object performs its own validation checks.
+  MpcData data(&qp.Q, &qp.R, &qp.S, &qp.q, &qp.r, &qp.A, &qp.B, &qp.c, &qp.E,
+               &qp.L, &qp.d, &qp.x0);
+  FullVariable x0(&x->z, &x->l, &x->v, &x->y);
 
   if (data.N_ != N_ || data.nx_ != nx_ || data.nu_ != nu_ || data.nc_ != nc_) {
     throw std::runtime_error(
@@ -66,7 +68,6 @@ SolverOut FBstabMpc::Solve(const QPData& qp, const QPVariable* x,
   if (!use_initial_guess) {
     x0.Fill(0.0);
   }
-
   return algorithm_->Solve(&data, &x0);
 }
 

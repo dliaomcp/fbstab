@@ -14,20 +14,19 @@ class MpcComponentUnitTests;
 }  // namespace test
 
 /**
- * This class implements primal-dual variables for model predictive
- * control QPs. See mpc_data.h for the mathematical description.
+ * This class implements primal-dual variables.
  * Stores variables and defines methods implementing useful operations.
  *
  * Primal-dual variables have 4 fields:
- * - z: Decision variables (x0,u0,x1,u1, ... xN,uN)
- * - l: Co-states/equality duals (l0, ... ,lN)
- * - v: Inequality duals (v0, ..., vN)
- * - y: Inequality margins (y0, ..., yN)
+ * - z: Decision variables
+ * - l: Equality duals
+ * - v: Inequality duals
+ * - y: Inequality margin
  *
- * length(z) = nz = (nx*nu)*(N+1)
- * length(l) = nl = nx*(N+1)
- * length(v) = nv = nc*(N+1)
- * length(y) = nv = nc*(N+1)
+ * length(z) = nz
+ * length(l) = nl
+ * length(v) = nv
+ * length(y) = nv
  */
 class FullVariable : Variable<FullVariable> {
  public:
@@ -47,7 +46,7 @@ class FullVariable : Variable<FullVariable> {
    * Creates a primal-dual variable using preallocated memory.
    *
    * @param[in] z    A vector to store the decision variables.
-   * @param[in] l    A vector to store the co-states/equality duals.
+   * @param[in] l    A vector to store the equality duals.
    * @param[in] v    A vector to store the dual variables.
    * @param[in] y    A vector to store the inequality margin.
    *

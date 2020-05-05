@@ -1,10 +1,9 @@
 #include "fbstab/test/ocp_generator.h"
 
+#include <Eigen/Dense>
 #include <cmath>
 #include <iostream>
 #include <vector>
-
-#include <Eigen/Dense>
 
 #include "fbstab/fbstab_mpc.h"
 #include "tools/copyable_macros.h"
@@ -16,27 +15,27 @@ using VectorXd = Eigen::VectorXd;
 using MatrixXd = Eigen::MatrixXd;
 
 // Returns a structure ready to be fed into FBstab.
-FBstabMpc::QPData OcpGenerator::GetFBstabInput() const {
+FBstabMpc::ProblemData OcpGenerator::GetFBstabInput() const {
   if (!data_populated_) {
     throw std::runtime_error(
         "In OcpGenerator::GetFBstabInput: Call a problem creator method "
         "first.");
   }
 
-  FBstabMpc::QPData s;
+  FBstabMpc::ProblemData s;
 
-  s.Q = &Q_;
-  s.R = &R_;
-  s.S = &S_;
-  s.q = &q_;
-  s.r = &r_;
-  s.A = &A_;
-  s.B = &B_;
-  s.c = &c_;
-  s.E = &E_;
-  s.L = &L_;
-  s.d = &d_;
-  s.x0 = &x0_;
+  s.Q = Q_;
+  s.R = R_;
+  s.S = S_;
+  s.q = q_;
+  s.r = r_;
+  s.A = A_;
+  s.B = B_;
+  s.c = c_;
+  s.E = E_;
+  s.L = L_;
+  s.d = d_;
+  s.x0 = x0_;
 
   return s;
 }
@@ -301,6 +300,7 @@ void OcpGenerator::ServoMotor(int N) {
   Dsim_ = MatrixXd::Zero(Csim_.rows(), Bsim_.cols());
   T_ = 40;
 }
+
 // Fills internal storage with data
 // for a double integrator problem with horizon N.
 void OcpGenerator::DoubleIntegrator(int N) {

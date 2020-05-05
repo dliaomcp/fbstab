@@ -51,31 +51,41 @@ class FBstabDense {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabDense)
   /** Structure to hold the problem data. */
-  struct QPData {
+  struct ProblemData {
+    ProblemData(int nz, int nv) {
+      H.resize(nz, nz);
+      A.resize(nv, nz);
+      f.resize(nz);
+      b.resize(nv);
+    }
     /// nz x nz real positive semidefinite Hessian matrix.
-    const Eigen::MatrixXd* H = nullptr;
+    Eigen::MatrixXd H;
     /// nv x nz real constraint Jacobian.
-    const Eigen::MatrixXd* A = nullptr;
+    Eigen::MatrixXd A;
     /// nz real linear cost.
-    const Eigen::VectorXd* f = nullptr;
+    Eigen::VectorXd f;
     /// nv real constraint rhs.
-    const Eigen::VectorXd* b = nullptr;
+    Eigen::VectorXd b;
   };
 
   /**
    * Structure to hold the initial guess.
-   * The vectors pointed to by z, v, and y WILL BE OVERWRITTEN
-   * with the solution.
+   * The vectors will be overwritten with the solution.
    */
-  struct QPVariable {
+  struct Variable {
+    Variable(int nz, int nv) {
+      z = Eigen::VectorXd::Zero(nz);
+      v = Eigen::VectorXd::Zero(nv);
+      y = Eigen::VectorXd::Zero(nv);
+    }
     /// Decision variables in \reals^nz.
-    Eigen::VectorXd* z = nullptr;
+    Eigen::VectorXd z;
     /// Equality duals
     Eigen::VectorXd l;
     /// Inequality duals in \reals^nv.
-    Eigen::VectorXd* v = nullptr;
+    Eigen::VectorXd v;
     /// Constraint margin, i.e., y = b-Az, in \reals^nv.
-    Eigen::VectorXd* y = nullptr;
+    Eigen::VectorXd y;
   };
 
   /** A Structure to hold options */
@@ -100,7 +110,7 @@ class FBstabDense {
    *
    * @return Summary of the optimizer output, see fbstab_algorithm.h.
    */
-  SolverOut Solve(const QPData& qp, QPVariable* x,
+  SolverOut Solve(const ProblemData& qp, Variable* x,
                   bool use_initial_guess = true);
 
   /**

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <vector>
-
 #include <Eigen/Dense>
+#include <vector>
 
 #include "fbstab/fbstab_mpc.h"
 #include "tools/copyable_macros.h"
@@ -46,7 +45,7 @@ class OcpGenerator {
    * Throws a runtime_error if one of the problem creator methods hasn't been
    * called first.
    */
-  FBstabMpc::QPData GetFBstabInput() const;
+  FBstabMpc::ProblemData GetFBstabInput() const;
 
   /**
    * Returns the data needed to simulate the linear time invariant systems
@@ -136,12 +135,15 @@ class OcpGenerator {
 
   /** Number of decision variables. */
   int nz() const { return nz_; }
-
   /** Number of equality duals. */
   int nl() const { return nl_; }
-
   /** Number of inequality duals. */
   int nv() const { return nv_; }
+
+  int N() const { return N_; }
+  int nx() const { return nx_; }
+  int nu() const { return nu_; }
+  int nc() const { return nc_; }
 
  private:
   // Repeats the given matrices into N or N+1 length vectors.

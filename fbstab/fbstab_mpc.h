@@ -64,83 +64,59 @@ class FBstabMpc {
    * See the class documentation or (29) in https://arxiv.org/pdf/1901.04046.pdf
    * for more details.
    */
-  struct QPData {  // rename to data reference?
+  struct ProblemData {
     ///  N + 1 vector of nx x nx matrices
-    const std::vector<Eigen::MatrixXd>* Q = nullptr;
+    std::vector<Eigen::MatrixXd> Q;
     /// N + 1 vector of nu x nu matrices
-    const std::vector<Eigen::MatrixXd>* R = nullptr;
+    std::vector<Eigen::MatrixXd> R;
     /// N + 1 vector of nu x nx matrices
-    const std::vector<Eigen::MatrixXd>* S = nullptr;
+    std::vector<Eigen::MatrixXd> S;
     /// N + 1 vector of nx x 1 vectors
-    const std::vector<Eigen::VectorXd>* q = nullptr;
+    std::vector<Eigen::VectorXd> q;
     /// N + 1 vector of nu x 1 vectors
-    const std::vector<Eigen::VectorXd>* r = nullptr;
+    std::vector<Eigen::VectorXd> r;
     /// N vector of nx x nx matrices
-    const std::vector<Eigen::MatrixXd>* A = nullptr;
+    std::vector<Eigen::MatrixXd> A;
     /// N  vector of nx x nu matrices
-    const std::vector<Eigen::MatrixXd>* B = nullptr;
+    std::vector<Eigen::MatrixXd> B;
     /// N vector of nx vectors
-    const std::vector<Eigen::VectorXd>* c = nullptr;
+    std::vector<Eigen::VectorXd> c;
     /// N + 1 vector of nc x nx matrices
-    const std::vector<Eigen::MatrixXd>* E = nullptr;
+    std::vector<Eigen::MatrixXd> E;
     /// N + 1 vector of nc x nu matrices
-    const std::vector<Eigen::MatrixXd>* L = nullptr;
+    std::vector<Eigen::MatrixXd> L;
     /// N + 1 vector of nc x 1 vectors
-    const std::vector<Eigen::VectorXd>* d = nullptr;
+    std::vector<Eigen::VectorXd> d;
     /// nx x 1 vector
-    const Eigen::VectorXd* x0 = nullptr;
-  };
-
-  /**
-   * Structure to collect the problem data.
-   */
-  struct Data {
-    ///  N + 1 vector of nx x nx matrices
-    const std::vector<Eigen::MatrixXd> Q;
-    /// N + 1 vector of nu x nu matrices
-    const std::vector<Eigen::MatrixXd> R;
-    /// N + 1 vector of nu x nx matrices
-    const std::vector<Eigen::MatrixXd> S;
-    /// N + 1 vector of nx x 1 vectors
-    const std::vector<Eigen::VectorXd> q;
-    /// N + 1 vector of nu x 1 vectors
-    const std::vector<Eigen::VectorXd> r;
-    /// N vector of nx x nx matrices
-    const std::vector<Eigen::MatrixXd> A;
-    /// N  vector of nx x nu matrices
-    const std::vector<Eigen::MatrixXd> B;
-    /// N vector of nx vectors
-    const std::vector<Eigen::VectorXd> c;
-    /// N + 1 vector of nc x nx matrices
-    const std::vector<Eigen::MatrixXd> E;
-    /// N + 1 vector of nc x nu matrices
-    const std::vector<Eigen::MatrixXd> L;
-    /// N + 1 vector of nc x 1 vectors
-    const std::vector<Eigen::VectorXd> d;
-    /// nx x 1 vector
-    const Eigen::VectorXd x0;
+    Eigen::VectorXd x0;
   };
 
   /**
    * Structure to hold the initial guess and solution.
    * These vectors will be overwritten by the solve routine.
    */
-  struct QPVariable {
-    QPVariable(Eigen::VectorXd* z_, Eigen::VectorXd* l_, Eigen::VectorXd* v_,
-               Eigen::VectorXd* y_) {
-      this->z = z_;
-      this->l = l_;
-      this->v = v_;
-      this->y = y_;
+  struct Variable {
+    // Initialize variables to 0 for a given problem size.
+    Variable(int N, int nx, int nu, int nc) { initialize(N, nx, nu, nc); }
+    // Initialization in vector form, s = (N, nx, nu, nc)
+    Variable(const Eigen::Vector4d& s) { initialize(s(0), s(1), s(2), s(3)); }
+
+    /// Decision variables in \reals^nz
+    Eigen::VectorXd z;
+    /// Equality duals/costates in \reals^nl
+    Eigen::VectorXd l;
+    /// Inequality duals in \reals^nv
+    Eigen::VectorXd v;
+    /// Constraint margin, i.e., y = b-Az, in \reals^nv
+    Eigen::VectorXd y;
+
+   private:
+    void initialize(int N, int nx, int nu, int nc) {
+      z = Eigen::VectorXd::Zero((N + 1) * (nx + nu));
+      l = Eigen::VectorXd::Zero((N + 1) * nx);
+      v = Eigen::VectorXd::Zero((N + 1) * nc);
+      y = Eigen::VectorXd::Zero((N + 1) * nc);
     }
-    /// decision variables in \reals^nz
-    Eigen::VectorXd* z = nullptr;
-    /// equality duals/costates in \reals^nl
-    Eigen::VectorXd* l = nullptr;
-    /// inequality duals in \reals^nv
-    Eigen::VectorXd* v = nullptr;
-    /// constraint margin, i.e., y = b-Az, in \reals^nv
-    Eigen::VectorXd* y = nullptr;
   };
 
   /** A Structure to hold options */
@@ -157,6 +133,8 @@ class FBstabMpc {
    * Throws a runtime_error if any inputs are nonpositive.
    */
   FBstabMpc(int N, int nx, int nu, int nc);
+  // Allocates workspace with s = (N, nx, nu, nc)
+  FBstabMpc(const Eigen::Vector4d& s);
 
   /**
    * Solves an instance of (1).
@@ -167,7 +145,7 @@ class FBstabMpc {
    * origin
    * @return       Summary of the optimizer output, see fbstab_algorithm.h.
    */
-  SolverOut Solve(const QPData& qp, const QPVariable* x,
+  SolverOut Solve(const ProblemData& qp, Variable* x,
                   bool use_initial_guess = true);
 
   /**

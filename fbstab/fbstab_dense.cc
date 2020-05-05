@@ -27,10 +27,8 @@ FBstabDense::FBstabDense(int nz, int nv) {
   x2_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
   x3_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
   x4_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
-
   r1_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
   r2_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
-
   feasibility_checker_ = tools::make_unique<FullFeasibility>(nz_, nl_, nv_);
   linear_solver_ = tools::make_unique<DenseCholeskySolver>(nz_, nv_);
 
@@ -41,12 +39,11 @@ FBstabDense::FBstabDense(int nz, int nv) {
   opts_ = DefaultOptions();
 }
 
-SolverOut FBstabDense::Solve(const QPData& qp, QPVariable* x,
+SolverOut FBstabDense::Solve(const ProblemData& qp, Variable* x,
                              bool use_initial_guess) {
-  DenseData data(qp.H, qp.f, qp.A, qp.b);
-
-  // Temporary workaround:
-  FullVariable x0(x->z, &x->l, x->v, x->y);
+  // The data object performs its own validation checks.
+  DenseData data(&qp.H, &qp.f, &qp.A, &qp.b);
+  FullVariable x0(&x->z, &x->l, &x->v, &x->y);
 
   if (nz_ != data.nz_ || nv_ != data.nv_) {
     throw std::runtime_error(
@@ -60,7 +57,6 @@ SolverOut FBstabDense::Solve(const QPData& qp, QPVariable* x,
   if (!use_initial_guess) {
     x0.Fill(0.0);
   }
-
   return algorithm_->Solve(&data, &x0);
 }
 

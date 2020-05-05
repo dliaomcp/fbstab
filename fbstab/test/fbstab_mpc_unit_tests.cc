@@ -16,18 +16,10 @@ GTEST_TEST(FBstabMpc, DoubleIntegrator) {
   // Get the problem data.
   OcpGenerator ocp;
   ocp.DoubleIntegrator(2);  // horizon length of 2
-  FBstabMpc::QPData data = ocp.GetFBstabInput();
+  FBstabMpc::ProblemData data = ocp.GetFBstabInput();
 
-  // Set up the initial guess.
-  VectorXd z = VectorXd::Zero(ocp.nz());
-  VectorXd l = VectorXd::Zero(ocp.nl());
-  VectorXd v = VectorXd::Zero(ocp.nv());
-  VectorXd y = VectorXd::Zero(ocp.nv());
-  FBstabMpc::QPVariable x{&z, &l, &v, &y};
-
-  // Call the solver.
-  Eigen::Vector4d size = ocp.ProblemSize();
-  FBstabMpc solver(size(0), size(1), size(2), size(3));
+  FBstabMpc::Variable x(ocp.ProblemSize());
+  FBstabMpc solver(ocp.ProblemSize());
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
@@ -55,15 +47,15 @@ GTEST_TEST(FBstabMpc, DoubleIntegrator) {
       -8.75144611157041e-10, -6.56358459377444e-10, 0, 0, 0, 0;
 
   for (int i = 0; i < ocp.nz(); i++) {
-    EXPECT_NEAR(z(i), zopt(i), 1e-8);
+    EXPECT_NEAR(x.z(i), zopt(i), 1e-8);
   }
 
   for (int i = 0; i < ocp.nl(); i++) {
-    EXPECT_NEAR(l(i), lopt(i), 1e-8);
+    EXPECT_NEAR(x.l(i), lopt(i), 1e-8);
   }
 
   for (int i = 0; i < ocp.nv(); i++) {
-    EXPECT_NEAR(v(i), vopt(i), 1e-8);
+    EXPECT_NEAR(x.v(i), vopt(i), 1e-8);
   }
 }
 
@@ -71,18 +63,13 @@ GTEST_TEST(FBstabMpc, DoubleIntegratorLongHorizon) {
   // Get the problem data.
   OcpGenerator ocp;
   ocp.DoubleIntegrator(20);  // horizon length of 20
-  FBstabMpc::QPData data = ocp.GetFBstabInput();
+  FBstabMpc::ProblemData data = ocp.GetFBstabInput();
 
   // Set up the initial guess.
-  VectorXd z = VectorXd::Zero(ocp.nz());
-  VectorXd l = VectorXd::Zero(ocp.nl());
-  VectorXd v = VectorXd::Zero(ocp.nv());
-  VectorXd y = VectorXd::Zero(ocp.nv());
-  FBstabMpc::QPVariable x = {&z, &l, &v, &y};
+  FBstabMpc::Variable x(ocp.ProblemSize());
 
   // Call the solver.
-  Eigen::Vector4d size = ocp.ProblemSize();
-  FBstabMpc solver(size(0), size(1), size(2), size(3));
+  FBstabMpc solver(ocp.ProblemSize());
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
@@ -98,18 +85,13 @@ GTEST_TEST(FBstabMpc, ServoMotor) {
   // Get the problem data.
   OcpGenerator ocp;
   ocp.ServoMotor(25);  // horizon length of 25
-  FBstabMpc::QPData data = ocp.GetFBstabInput();
+  FBstabMpc::ProblemData data = ocp.GetFBstabInput();
 
   // Set up the initial guess.
-  VectorXd z = VectorXd::Zero(ocp.nz());
-  VectorXd l = VectorXd::Zero(ocp.nl());
-  VectorXd v = VectorXd::Zero(ocp.nv());
-  VectorXd y = VectorXd::Zero(ocp.nv());
-  FBstabMpc::QPVariable x = {&z, &l, &v, &y};
+  FBstabMpc::Variable x(ocp.ProblemSize());
 
   // Call the solver.
-  Eigen::Vector4d size = ocp.ProblemSize();
-  FBstabMpc solver(size(0), size(1), size(2), size(3));
+  FBstabMpc solver(ocp.ProblemSize());
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
@@ -125,18 +107,13 @@ GTEST_TEST(FBstabMpc, SpacecraftRelativeMotion) {
   // Get the problem data.
   OcpGenerator ocp;
   ocp.SpacecraftRelativeMotion(40);  // horizon length of 40
-  FBstabMpc::QPData data = ocp.GetFBstabInput();
+  FBstabMpc::ProblemData data = ocp.GetFBstabInput();
 
   // Set up the initial guess.
-  VectorXd z = VectorXd::Zero(ocp.nz());
-  VectorXd l = VectorXd::Zero(ocp.nl());
-  VectorXd v = VectorXd::Zero(ocp.nv());
-  VectorXd y = VectorXd::Zero(ocp.nv());
-  FBstabMpc::QPVariable x = {&z, &l, &v, &y};
+  FBstabMpc::Variable x(ocp.ProblemSize());
 
   // Call the solver.
-  Eigen::Vector4d size = ocp.ProblemSize();
-  FBstabMpc solver(size(0), size(1), size(2), size(3));
+  FBstabMpc solver(ocp.ProblemSize());
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
@@ -152,18 +129,13 @@ GTEST_TEST(FBstabMpc, CopolymerizationReactor) {
   // Get the problem data.
   OcpGenerator ocp;
   ocp.CopolymerizationReactor(80);  // horizon length of 80
-  FBstabMpc::QPData data = ocp.GetFBstabInput();
+  FBstabMpc::ProblemData data = ocp.GetFBstabInput();
 
   // Set up the initial guess.
-  VectorXd z = VectorXd::Zero(ocp.nz());
-  VectorXd l = VectorXd::Zero(ocp.nl());
-  VectorXd v = VectorXd::Zero(ocp.nv());
-  VectorXd y = VectorXd::Zero(ocp.nv());
-  FBstabMpc::QPVariable x = {&z, &l, &v, &y};
+  FBstabMpc::Variable x(ocp.ProblemSize());
 
   // Call the solver.
-  Eigen::Vector4d size = ocp.ProblemSize();
-  FBstabMpc solver(size(0), size(1), size(2), size(3));
+  FBstabMpc solver(ocp.ProblemSize());
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;

@@ -1,11 +1,3 @@
-/**
- * @file Unit tests for FBstabDense
- * which is designed to solve QPs of the form:
- *
- * min  0.5 z'Hz + f'z
- * s.t. Az <= b
- *
- */
 #include <gtest/gtest.h>
 
 #include <Eigen/Dense>
@@ -33,33 +25,15 @@ using VectorXd = Eigen::VectorXd;
  * z = [0 -5],  v = [5 0]
  */
 GTEST_TEST(FBstabDense, FeasibleQP) {
-  MatrixXd H(2, 2);
-  MatrixXd A(2, 2);
-  VectorXd f(2);
-  VectorXd b(2);
+  int n = 2;
+  int q = 2;
 
-  H << 3, 1, 1, 1;
-  f << 10, 5;
-  A << -1, 0, 0, 1;
-  b << 0, 0;
-
-  int n = f.size();
-  int q = b.size();
-
-  FBstabDense::QPData data;
-  data.H = &H;
-  data.f = &f;
-  data.A = &A;
-  data.b = &b;
-
-  VectorXd z0 = Eigen::VectorXd::Zero(n);
-  VectorXd v0 = Eigen::VectorXd::Zero(q);
-  VectorXd y0 = Eigen::VectorXd::Zero(q);
-
-  FBstabDense::QPVariable x0;
-  x0.z = &z0;
-  x0.v = &v0;
-  x0.y = &y0;
+  FBstabDense::Variable x0(n, q);
+  FBstabDense::ProblemData data(n, q);
+  data.H << 3, 1, 1, 1;
+  data.f << 10, 5;
+  data.A << -1, 0, 0, 1;
+  data.b << 0, 0;
 
   FBstabDense solver(n, q);
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
@@ -76,11 +50,11 @@ GTEST_TEST(FBstabDense, FeasibleQP) {
   zopt << 0, -5;
   vopt << 5, 0;
   for (int i = 0; i < n; i++) {
-    EXPECT_NEAR(z0(i), zopt(i), 1e-8);
+    EXPECT_NEAR(x0.z(i), zopt(i), 1e-8);
   }
 
   for (int i = 0; i < q; i++) {
-    EXPECT_NEAR(v0(i), vopt(i), 1e-8);
+    EXPECT_NEAR(x0.v(i), vopt(i), 1e-8);
   }
 }
 
@@ -100,38 +74,17 @@ GTEST_TEST(FBstabDense, FeasibleQP) {
  * [1] x [1,3]
  */
 GTEST_TEST(FBstabDense, DegenerateQP) {
-  MatrixXd H(2, 2);
-  MatrixXd A(5, 2);
-  VectorXd f(2);
-  VectorXd b(5);
+  int n = 2;
+  int q = 5;
 
-  H << 1, 0, 0, 0;
-  f << 1, 0;
-
-  A << 0, 0, 1, 0, 0, 1, -1, 0, 0, -1;
-
-  b << 0, 3, 3, -1, -1;
-
-  int n = f.size();
-  int q = b.size();
-
-  FBstabDense::QPData data;
-  data.H = &H;
-  data.f = &f;
-  data.A = &A;
-  data.b = &b;
-
-  VectorXd z0 = Eigen::VectorXd::Zero(n);
-  VectorXd v0 = Eigen::VectorXd::Zero(q);
-  VectorXd y0 = Eigen::VectorXd::Zero(q);
-
-  FBstabDense::QPVariable x0;
-  x0.z = &z0;
-  x0.v = &v0;
-  x0.y = &y0;
+  FBstabDense::Variable x0(n, q);
+  FBstabDense::ProblemData data(n, q);
+  data.H << 1, 0, 0, 0;
+  data.f << 1, 0;
+  data.A << 0, 0, 1, 0, 0, 1, -1, 0, 0, -1;
+  data.b << 0, 3, 3, -1, -1;
 
   FBstabDense solver(n, q);
-
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
   opts.display_level = Display::FINAL;
@@ -140,12 +93,12 @@ GTEST_TEST(FBstabDense, DegenerateQP) {
   SolverOut out = solver.Solve(data, &x0);
 
   ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);
-  EXPECT_NEAR(z0(0), 1, 1e-8);
-  EXPECT_TRUE((z0(1) >= 1) && (z0(1) <= 3));
+  EXPECT_NEAR(x0.z(0), 1, 1e-8);
+  EXPECT_TRUE((x0.z(1) >= 1) && (x0.z(1) <= 3));
 
   // Check satisfaction of KKT conditions.
-  VectorXd r1 = H * z0 + f + A.transpose() * v0;
-  VectorXd r2 = y0.cwiseMin(v0);
+  VectorXd r1 = data.H * x0.z + data.f + data.A.transpose() * x0.v;
+  VectorXd r2 = x0.y.cwiseMin(x0.v);
 
   ASSERT_NEAR(r1.norm() + r2.norm(), 0, 1e-6);
 }
@@ -166,38 +119,18 @@ GTEST_TEST(FBstabDense, DegenerateQP) {
  * there is no z satisfying Az <= b
  */
 GTEST_TEST(FBstabDense, InfeasibleQP) {
-  MatrixXd H(2, 2);
-  MatrixXd A(5, 2);
-  VectorXd f(2);
-  VectorXd b(5);
+  int n = 2;
+  int q = 5;
 
-  H << 1, 0, 0, 0;
-  f << 1, -1;
+  FBstabDense::ProblemData data(n, q);
+  data.H << 1, 0, 0, 0;
+  data.f << 1, -1;
+  data.A << 1, 1, 1, 0, 0, 1, -1, 0, 0, -1;
+  data.b << 0, 3, 3, -1, -1;
 
-  A << 1, 1, 1, 0, 0, 1, -1, 0, 0, -1;
-
-  b << 0, 3, 3, -1, -1;
-
-  int n = f.size();
-  int q = b.size();
-
-  FBstabDense::QPData data;
-  data.H = &H;
-  data.f = &f;
-  data.A = &A;
-  data.b = &b;
-
-  VectorXd z0 = Eigen::VectorXd::Zero(n);
-  VectorXd v0 = Eigen::VectorXd::Zero(q);
-  VectorXd y0 = Eigen::VectorXd::Zero(q);
-
-  FBstabDense::QPVariable x0;
-  x0.z = &z0;
-  x0.v = &v0;
-  x0.y = &y0;
+  FBstabDense::Variable x0(n, q);
 
   FBstabDense solver(n, q);
-
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
   opts.display_level = Display::FINAL;
@@ -223,35 +156,16 @@ GTEST_TEST(FBstabDense, InfeasibleQP) {
  * its optimal value is -infinity
  */
 GTEST_TEST(FBstabDense, UnboundedQP) {
-  MatrixXd H(2, 2);
-  MatrixXd A(4, 2);
-  VectorXd f(2);
-  VectorXd b(4);
+  int n = 2;
+  int q = 4;
 
-  H << 1, 0, 0, 0;
-  f << 1, -1;
+  FBstabDense::ProblemData data(n, q);
+  data.H << 1, 0, 0, 0;
+  data.f << 1, -1;
+  data.A << 0, 0, 1, 0, -1, 0, 0, -1;
+  data.b << 0, 3, -1, -1;
 
-  A << 0, 0, 1, 0, -1, 0, 0, -1;
-
-  b << 0, 3, -1, -1;
-
-  int n = f.size();
-  int q = b.size();
-
-  FBstabDense::QPData data;
-  data.H = &H;
-  data.f = &f;
-  data.A = &A;
-  data.b = &b;
-
-  VectorXd z0 = Eigen::VectorXd::Zero(n);
-  VectorXd v0 = Eigen::VectorXd::Zero(q);
-  VectorXd y0 = Eigen::VectorXd::Zero(q);
-
-  FBstabDense::QPVariable x0;
-  x0.z = &z0;
-  x0.v = &v0;
-  x0.y = &y0;
+  FBstabDense::Variable x0(n, q);
 
   FBstabDense solver(n, q);
 

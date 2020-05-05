@@ -2,8 +2,8 @@
 
 load(
     "//tools:fbstab.bzl",
-    "fbstab_cc_library",
     "fbstab_cc_googletest",
+    "fbstab_cc_library",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -17,12 +17,12 @@ fbstab_cc_library(
     hdrs = ["fbstab_dense.h"],
     deps = [
         ":fbstab_algorithm",
-        "//tools:essential",
+        "//fbstab/components:dense_cholesky_solver",
         "//fbstab/components:dense_data",
         "//fbstab/components:full_feasibility",
-        "//fbstab/components:dense_cholesky_solver",
         "//fbstab/components:full_residual",
         "//fbstab/components:full_variable",
+        "//tools:essential",
         "@eigen",
     ],
 )
@@ -35,12 +35,12 @@ fbstab_cc_library(
     hdrs = ["fbstab_mpc.h"],
     deps = [
         ":fbstab_algorithm",
-        "//tools:essential",
-        "//fbstab/components:mpc_data",
         "//fbstab/components:full_feasibility",
         "//fbstab/components:full_residual",
         "//fbstab/components:full_variable",
+        "//fbstab/components:mpc_data",
         "//fbstab/components:riccati_linear_solver",
+        "//tools:essential",
         "@eigen",
     ],
 )
