@@ -66,6 +66,10 @@ class DenseData : public Data {
 
   double ForcingNorm() const { return forcing_norm_; }
 
+  int nz() const { return nz_; }
+  int nl() const { return nl_; }
+  int nv() const { return nv_; }
+
  private:
   int nz_ = 0;  // Number of decision variables.
   int nl_ = 0;  // Number of equality constraints
@@ -79,7 +83,6 @@ class DenseData : public Data {
   const Eigen::VectorXd* b_ = nullptr;
 
   friend class DenseCholeskySolver;
-  friend class FBstabDense;
 };
 
 }  // namespace fbstab

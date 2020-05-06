@@ -27,13 +27,14 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 	target_compile_features(dense_unit_tests PUBLIC cxx_std_11)
 	set_target_properties(dense_unit_tests PROPERTIES CXX_EXTENSIONS OFF)
 
-	add_test(dense_unit_tests dense_unit_tests)
 	add_executable(mpc_unit_tests test/fbstab_mpc_unit_tests.cc)
 	target_include_directories(mpc_unit_tests PUBLIC ${FBSTAB_ROOT})
 	target_link_libraries(mpc_unit_tests PUBLIC fbstab_mpc ocp_generator gtest_main)
 	target_compile_features(mpc_unit_tests PUBLIC cxx_std_11)
 	set_target_properties(mpc_unit_tests PROPERTIES CXX_EXTENSIONS OFF)
 
+
+	add_test(dense_unit_tests dense_unit_tests)
 	add_test(mpc_unit_tests mpc_unit_tests)
 endif()
 

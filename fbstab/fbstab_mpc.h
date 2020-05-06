@@ -14,10 +14,6 @@
 
 namespace fbstab {
 
-/** Convenience typedef for the templated version of the algorithm.*/
-using FBstabAlgoMpc = FBstabAlgorithm<FullVariable, FullResidual, MpcData,
-                                      RiccatiLinearSolver, FullFeasibility>;
-
 /**
  * FBstabMpc implements the Proximally Stabilized Semismooth Method for
  * solving the following quadratic programming problem (1):
@@ -59,36 +55,27 @@ using FBstabAlgoMpc = FBstabAlgorithm<FullVariable, FullResidual, MpcData,
 class FBstabMpc {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabMpc)
+  // Convenience typedef.
+  using FBstabAlgoMpc = FBstabAlgorithm<FullVariable, FullResidual, MpcData,
+                                        RiccatiLinearSolver, FullFeasibility>;
   /**
    * Structure to hold references to the problem data.
    * See the class documentation or (29) in https://arxiv.org/pdf/1901.04046.pdf
    * for more details.
    */
   struct ProblemData {
-    ///  N + 1 vector of nx x nx matrices
-    std::vector<Eigen::MatrixXd> Q;
-    /// N + 1 vector of nu x nu matrices
-    std::vector<Eigen::MatrixXd> R;
-    /// N + 1 vector of nu x nx matrices
-    std::vector<Eigen::MatrixXd> S;
-    /// N + 1 vector of nx x 1 vectors
-    std::vector<Eigen::VectorXd> q;
-    /// N + 1 vector of nu x 1 vectors
-    std::vector<Eigen::VectorXd> r;
-    /// N vector of nx x nx matrices
-    std::vector<Eigen::MatrixXd> A;
-    /// N  vector of nx x nu matrices
-    std::vector<Eigen::MatrixXd> B;
-    /// N vector of nx vectors
-    std::vector<Eigen::VectorXd> c;
-    /// N + 1 vector of nc x nx matrices
-    std::vector<Eigen::MatrixXd> E;
-    /// N + 1 vector of nc x nu matrices
-    std::vector<Eigen::MatrixXd> L;
-    /// N + 1 vector of nc x 1 vectors
-    std::vector<Eigen::VectorXd> d;
-    /// nx x 1 vector
-    Eigen::VectorXd x0;
+    std::vector<Eigen::MatrixXd> Q;  ///  N + 1 vector of nx x nx matrices
+    std::vector<Eigen::MatrixXd> R;  /// N + 1 vector of nu x nu matrices
+    std::vector<Eigen::MatrixXd> S;  /// N + 1 vector of nu x nx matrices
+    std::vector<Eigen::VectorXd> q;  /// N + 1 vector of nx x 1 vectors
+    std::vector<Eigen::VectorXd> r;  /// N + 1 vector of nu x 1 vectors
+    std::vector<Eigen::MatrixXd> A;  /// N vector of nx x nx matrices
+    std::vector<Eigen::MatrixXd> B;  /// N  vector of nx x nu matrices
+    std::vector<Eigen::VectorXd> c;  /// N vector of nx vectors
+    std::vector<Eigen::MatrixXd> E;  /// N + 1 vector of nc x nx matrices
+    std::vector<Eigen::MatrixXd> L;  /// N + 1 vector of nc x nu matrices
+    std::vector<Eigen::VectorXd> d;  /// N + 1 vector of nc x 1 vectors
+    Eigen::VectorXd x0;              /// nx x 1 vector
   };
 
   /**
@@ -101,22 +88,31 @@ class FBstabMpc {
     // Initialization in vector form, s = (N, nx, nu, nc)
     Variable(const Eigen::Vector4d& s) { initialize(s(0), s(1), s(2), s(3)); }
 
-    /// Decision variables in \reals^nz
-    Eigen::VectorXd z;
-    /// Equality duals/costates in \reals^nl
-    Eigen::VectorXd l;
-    /// Inequality duals in \reals^nv
-    Eigen::VectorXd v;
-    /// Constraint margin, i.e., y = b-Az, in \reals^nv
-    Eigen::VectorXd y;
+    Eigen::VectorXd z;  /// Decision variables in \reals^nz
+    Eigen::VectorXd l;  /// Equality duals/costates in \reals^nl
+    Eigen::VectorXd v;  /// Inequality duals in \reals^nv
+    Eigen::VectorXd y;  /// Constraint margin, i.e., y = b-Az, in \reals^nv
 
    private:
-    void initialize(int N, int nx, int nu, int nc) {
-      z = Eigen::VectorXd::Zero((N + 1) * (nx + nu));
-      l = Eigen::VectorXd::Zero((N + 1) * nx);
-      v = Eigen::VectorXd::Zero((N + 1) * nc);
-      y = Eigen::VectorXd::Zero((N + 1) * nc);
-    }
+    void initialize(int N, int nx, int nu, int nc);
+  };
+
+  struct VariableRef {
+    // Initialization using raw pointers.
+    VariableRef(int nz, int nl, int nv, double* z_, double* l_, double* v_,
+                double* y_);
+
+    // Initialization using Eigen::Maps.
+    using Map = Eigen::Map<Eigen::VectorXd>;
+    VariableRef(Map z_, Map l_, Map v_, Map y_);
+
+    // Fill all fields with a.
+    void fill(double a);
+
+    Map z;  /// Decision variables in \reals^nz.
+    Map l;  /// Equality duals
+    Map v;  /// Inequality duals in \reals^nv.
+    Map y;  /// Constraint margin, i.e., y = b-Az, in \reals^nv.
   };
 
   /** A Structure to hold options */
@@ -133,6 +129,7 @@ class FBstabMpc {
    * Throws a runtime_error if any inputs are nonpositive.
    */
   FBstabMpc(int N, int nx, int nu, int nc);
+
   // Allocates workspace with s = (N, nx, nu, nc)
   FBstabMpc(const Eigen::Vector4d& s);
 
@@ -144,9 +141,12 @@ class FBstabMpc {
    * @param[in]     use_initial_guess if false the solver is initialized at the
    * origin
    * @return       Summary of the optimizer output, see fbstab_algorithm.h.
+   *
+   * The template parameter allows for both Variable and VariableRef type
+   * inputs.
    */
-  SolverOut Solve(const ProblemData& qp, Variable* x,
-                  bool use_initial_guess = true);
+  template <class InputVector>
+  SolverOut Solve(const ProblemData& qp, InputVector* x);
 
   /**
    * Allows for setting of solver options. See fbstab_algorithm.h for
@@ -161,6 +161,9 @@ class FBstabMpc {
   static Options ReliableOptions();
 
  private:
+  template <class InputVector>
+  void ValidateInputSizes(const MpcData& data, const InputVector& x);
+
   int N_ = 0;   // horizon length
   int nx_ = 0;  // number of states
   int nu_ = 0;  // number of controls

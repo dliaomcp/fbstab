@@ -14,6 +14,23 @@
 
 namespace fbstab {
 
+FBstabDense::VariableRef::VariableRef(int nz, int nv, double* z_, double* l_,
+                                      double* v_, double* y_)
+    : z(z_, nz), l(l_, 0), v(v_, nv), y(y_, nv) {}
+
+FBstabDense::VariableRef::VariableRef(Map z_, Map l_, Map v_, Map y_)
+    : z(z_.data(), z_.size()),
+      l(l_.data(), l_.size()),
+      v(v_.data(), v_.size()),
+      y(y_.data(), y_.size()) {}
+
+void FBstabDense::VariableRef::fill(double a) {
+  z.fill(a);
+  l.fill(a);
+  v.fill(a);
+  y.fill(a);
+}
+
 FBstabDense::FBstabDense(int nz, int nv) {
   if (nz <= 0 || nv <= 0) {
     throw std::runtime_error(
@@ -39,25 +56,12 @@ FBstabDense::FBstabDense(int nz, int nv) {
   opts_ = DefaultOptions();
 }
 
-SolverOut FBstabDense::Solve(const ProblemData& qp, Variable* x,
-                             bool use_initial_guess) {
-  // The data object performs its own validation checks.
+template <class InputVector>
+SolverOut FBstabDense::Solve(const ProblemData& qp, InputVector* x) {
+  // Data performs its own validation checks.
   DenseData data(&qp.H, &qp.f, &qp.A, &qp.b);
-  FullVariable x0(&x->z, &x->l, &x->v, &x->y);
-
-  if (nz_ != data.nz_ || nv_ != data.nv_) {
-    throw std::runtime_error(
-        "In FBstabDense::Solve: mismatch between *this and data dimensions.");
-  }
-  if (nz_ != x0.z().size() || nv_ != x0.v().size()) {
-    throw std::runtime_error(
-        "In FBstabDense::Solve: mismatch between *this and initial guess "
-        "dimensions.");
-  }
-  if (!use_initial_guess) {
-    x0.Fill(0.0);
-  }
-  return algorithm_->Solve(&data, &x0);
+  ValidateInputs(data, *x);
+  return algorithm_->Solve(&data, &x->z, &x->l, &x->v, &x->y);
 }
 
 void FBstabDense::UpdateOptions(const Options& options) {
@@ -78,7 +82,22 @@ FBstabDense::Options FBstabDense::ReliableOptions() {
   return opts;
 }
 
+template <class InputVector>
+void FBstabDense::ValidateInputs(const DenseData& data, const InputVector& x) {
+  if (nz_ != data.nz() || nv_ != data.nv()) {
+    throw std::runtime_error(
+        "In FBstabDense::Solve: mismatch between *this and data dimensions.");
+  }
+  if (nz_ != x.z.size() || nv_ != x.v.size()) {
+    throw std::runtime_error(
+        "In FBstabDense::Solve: mismatch between *this and initial guess "
+        "dimensions.");
+  }
+}
+
 // Explicit instantiation.
+template SolverOut FBstabDense::Solve(const ProblemData& qp, Variable* x);
+template SolverOut FBstabDense::Solve(const ProblemData& qp, VariableRef* x);
 template class FBstabAlgorithm<FullVariable, FullResidual, DenseData,
                                DenseCholeskySolver, FullFeasibility>;
 

@@ -23,7 +23,7 @@ GTEST_TEST(FBstabMpc, DoubleIntegrator) {
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::ITER;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
@@ -73,7 +73,7 @@ GTEST_TEST(FBstabMpc, DoubleIntegratorLongHorizon) {
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::ITER;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
@@ -95,7 +95,7 @@ GTEST_TEST(FBstabMpc, ServoMotor) {
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::ITER;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
@@ -117,7 +117,7 @@ GTEST_TEST(FBstabMpc, SpacecraftRelativeMotion) {
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::ITER;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 
@@ -139,7 +139,7 @@ GTEST_TEST(FBstabMpc, CopolymerizationReactor) {
 
   FBstabMpc::Options opts = FBstabMpc::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::ITER;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
   SolverOut out = solver.Solve(data, &x);
 

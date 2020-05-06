@@ -37,29 +37,6 @@ FullVariable::FullVariable(int nz, int nl, int nv) {
   y_->setConstant(0.0);
 }
 
-FullVariable::FullVariable(VectorXd* z, VectorXd* l, VectorXd* v, VectorXd* y) {
-  if (z == nullptr || l == nullptr || v == nullptr || y == nullptr) {
-    throw std::runtime_error(
-        "Inputs to FullVariable::FullVariable cannot be null.");
-  }
-  if (z->size() == 0 || v->size() == 0 || y->size() == 0) {
-    throw std::runtime_error("Invalid input to FullVariable.");
-  }
-  if (v->size() != y->size()) {
-    throw std::runtime_error(
-        "In FullVariable::FullVariable, y and v must be the same size");
-  }
-
-  nz_ = z->size();
-  nl_ = l->size();
-  nv_ = v->size();
-
-  z_ = z;
-  l_ = l;
-  v_ = v;
-  y_ = y;
-}
-
 void FullVariable::Fill(double a) {
   z_->setConstant(a);
   l_->setConstant(a);

@@ -15,6 +15,7 @@ CXX_FLAGS = [
     "-Werror=pedantic",
     "-Werror=shadow",
     "-std=c++11",
+    # "-g",
 ]
 
 def _platform_copts(rule_copts, cc_test = 0):

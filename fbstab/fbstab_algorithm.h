@@ -132,12 +132,16 @@ class FBstabAlgorithm {
    * data starting from the supplied initial guess.
    *
    * @param[in] qp_data problem data
-   * @param[in,out] x0    initial primal-dual guess, overwritten with the
-   * solution
+   * @param[in,out] z0    primal guess, overwritten
+   * @param[in,out] l0    equality dual guess, overwritten
+   * @param[in,out] v0    inequality dual guess, overwritten
+   * @param[out]    y0    constraint margin
    *
    * @return Details on the solver output
    */
-  SolverOut Solve(const Data* qp_data, Variable* x0);
+  template <class InputVector>
+  SolverOut Solve(const Data* qp_data, InputVector* z0, InputVector* l0,
+                  InputVector* v0, InputVector* y0);
 
   /**
    * Allows setting of algorithm options.
@@ -167,6 +171,9 @@ class FBstabAlgorithm {
     opts_.display_level = options->display_level;
     opts_.ValidateOptions();
   }
+
+  // TODO(dliaomcp@umich.edu): Enable printing to a log file rather than just
+  // stdout
 
   /** Returns current parameters */
   AlgorithmParameters CurrentParameters() const { return opts_; }
@@ -198,8 +205,6 @@ class FBstabAlgorithm {
 
   AlgorithmParameters opts_;
 
-  // TODO(dliaomcp@umich.edu) Switch to circular buffer implementation to avoid
-  // copy overhead.
   static constexpr int kNonMonotoneLineSearch = 5;
   static_assert(kNonMonotoneLineSearch > 0,
                 "kNonMonotoneLineSearch must be positive");
@@ -208,6 +213,27 @@ class FBstabAlgorithm {
        0.0}};  // This needs to be initialized with the correct number of zeros
                // to avoid a subtle compiler error.
 
+  // Reads an initial guess into a variable.
+  template <class InputVector>
+  void CopyIntoVariable(const InputVector& z, const InputVector& l,
+                        const InputVector& v, const InputVector& y,
+                        Variable* x) {
+    std::ignore = y;  // x->y will be overwritten by InitializeConstraintMargin
+    x->z() = z;
+    x->l() = l;
+    x->v() = v;
+    x->InitializeConstraintMargin();
+  }
+
+  // Writes a variable back into that initial guess.
+  template <class InputVector>
+  void WriteVariable(const Variable& x, InputVector* z, InputVector* l,
+                     InputVector* v, InputVector* y) {
+    *z = x.z();
+    *l = x.l();
+    *v = x.v();
+    *y = x.y();
+  }
   /*
    * Attempts to solve a proximal subproblem x = P(xbar,sigma) using
    * the semismooth Newton's method. See (11) in
@@ -417,13 +443,14 @@ FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   opts_.DefaultParameters();
 }
 
-// TODO(dliaomcp@umich.edu): Enable printing to a log file rather than just
-// stdout
 template <class Variable, class Residual, class Data, class LinearSolver,
           class Feasibility>
+template <class InputVector>
 SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
                           Feasibility>::Solve(const Data* qp_data,
-                                              Variable* x0) {
+                                              InputVector* z0, InputVector* l0,
+                                              InputVector* v0,
+                                              InputVector* y0) {
   const time_point start_time{clock::now() /* dummy */};
 
   // Make sure the linear solver and residuals objects are using the same value
@@ -437,7 +464,6 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   xi_->LinkData(qp_data);
   dx_->LinkData(qp_data);
   xp_->LinkData(qp_data);
-  x0->LinkData(qp_data);
 
   rk_->LinkData(qp_data);
   ri_->LinkData(qp_data);
@@ -448,9 +474,9 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   const double sigma = opts_.sigma0;
   combo_tol_ = opts_.abs_tol + opts_.rel_tol * (1.0 + qp_data->ForcingNorm());
 
-  x0->InitializeConstraintMargin();
-  xk_->Copy(*x0);
-  xi_->Copy(*x0);
+  // Copy the initial guess into xk
+  CopyIntoVariable(*z0, *l0, *v0, *y0, xk_);
+  xi_->Copy(*xk_);
   dx_->Fill(1.0);
 
   rk_->PenalizedNaturalResidual(*xk_);
@@ -473,12 +499,11 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
     // b) ||x(k) - x(k-1)|| <= stall_tol
     rk_->PenalizedNaturalResidual(*xk_);
     Ek = rk_->Norm();
-
     if (Ek <= combo_tol_ || dx_->Norm() <= opts_.stall_tol) {
       PrintIterLine(prox_iters_, newton_iters_, *rk_, *ri_, inner_tol);
       SolverOut output = PrepareOutput(ExitFlag::SUCCESS, prox_iters_,
                                        newton_iters_, *rk_, start_time, E0);
-      x0->Copy(*xk_);
+      WriteVariable(*xk_, z0, l0, v0, y0);
       return output;
     } else {
       PrintDetailedHeader(prox_iters_, newton_iters_, *rk_);
@@ -499,11 +524,12 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
     // Iteration timeout check.
     if (newton_iters_ >= opts_.max_newton_iters) {
       if (Eo < Ek) {
-        x0->Copy(*xi_);
+        WriteVariable(*xi_, z0, l0, v0, y0);
+        rk_->PenalizedNaturalResidual(*xi_);
       } else {
-        x0->Copy(*xk_);
+        WriteVariable(*xk_, z0, l0, v0, y0);
+        rk_->PenalizedNaturalResidual(*xk_);
       }
-      rk_->PenalizedNaturalResidual(*x0);
       SolverOut output = PrepareOutput(ExitFlag::MAXITERATIONS, prox_iters_,
                                        newton_iters_, *rk_, start_time, E0);
       return output;
@@ -517,7 +543,7 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
       if (eflag != ExitFlag::SUCCESS) {
         SolverOut output = PrepareOutput(eflag, prox_iters_, newton_iters_,
                                          *rk_, start_time, E0);
-        x0->Copy(*dx_);
+        WriteVariable(*dx_, z0, l0, v0, y0);
         return output;
       }
     }
@@ -530,7 +556,7 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   // Timeout exit.
   SolverOut output = PrepareOutput(ExitFlag::MAXITERATIONS, prox_iters_,
                                    newton_iters_, *rk_, start_time, E0);
-  x0->Copy(*xk_);
+  WriteVariable(*xk_, z0, l0, v0, y0);
   return output;
 }
 

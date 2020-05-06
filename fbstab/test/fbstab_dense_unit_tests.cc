@@ -2,15 +2,16 @@
 
 #include <Eigen/Dense>
 #include <cmath>
+#include <memory>
 
 #include "fbstab/fbstab_dense.h"
+#include "tools/utilities.h"
 
 namespace fbstab {
 namespace test {
 
 using MatrixXd = Eigen::MatrixXd;
 using VectorXd = Eigen::VectorXd;
-
 /**
  * Tests FBstab with
  *
@@ -38,7 +39,7 @@ GTEST_TEST(FBstabDense, FeasibleQP) {
   FBstabDense solver(n, q);
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::FINAL;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
 
   SolverOut out = solver.Solve(data, &x0);
@@ -77,7 +78,17 @@ GTEST_TEST(FBstabDense, DegenerateQP) {
   int n = 2;
   int q = 5;
 
-  FBstabDense::Variable x0(n, q);
+  // Using a ref variable this time
+  std::unique_ptr<double[]> zmem(new double[n]);
+  std::unique_ptr<double[]> lmem(new double[1]);
+  std::unique_ptr<double[]> vmem(new double[q]);
+  std::unique_ptr<double[]> ymem(new double[q]);
+
+  FBstabDense::VariableRef x0(n, q, zmem.get(), lmem.get(), vmem.get(),
+                              ymem.get());
+  x0.fill(0.0);
+
+  // FBstabDense::Variable x0(n, q);
   FBstabDense::ProblemData data(n, q);
   data.H << 1, 0, 0, 0;
   data.f << 1, 0;
@@ -87,7 +98,7 @@ GTEST_TEST(FBstabDense, DegenerateQP) {
   FBstabDense solver(n, q);
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::FINAL;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
 
   SolverOut out = solver.Solve(data, &x0);
@@ -133,7 +144,7 @@ GTEST_TEST(FBstabDense, InfeasibleQP) {
   FBstabDense solver(n, q);
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::FINAL;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
 
   SolverOut out = solver.Solve(data, &x0);
@@ -171,7 +182,7 @@ GTEST_TEST(FBstabDense, UnboundedQP) {
 
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
-  opts.display_level = Display::FINAL;
+  opts.display_level = Display::OFF;
   solver.UpdateOptions(opts);
 
   SolverOut out = solver.Solve(data, &x0);

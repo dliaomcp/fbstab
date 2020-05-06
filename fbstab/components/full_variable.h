@@ -43,20 +43,6 @@ class FullVariable : Variable<FullVariable> {
   FullVariable(int nz, int nl, int nv);
 
   /**
-   * Creates a primal-dual variable using preallocated memory.
-   *
-   * @param[in] z    A vector to store the decision variables.
-   * @param[in] l    A vector to store the equality duals.
-   * @param[in] v    A vector to store the dual variables.
-   * @param[in] y    A vector to store the inequality margin.
-   *
-   * Throws a runtime_error if sizes are mismatched or if any of the inputs are
-   * null.
-   */
-  FullVariable(Eigen::VectorXd* z, Eigen::VectorXd* l, Eigen::VectorXd* v,
-               Eigen::VectorXd* y);
-
-  /**
    * Links to problem data needed to perform calculations.
    * Calculations cannot be performed until a data object is provided.
    * @param[in] data pointer to the problem data

@@ -14,6 +14,30 @@
 
 namespace fbstab {
 
+void FBstabMpc::Variable::initialize(int N, int nx, int nu, int nc) {
+  z = Eigen::VectorXd::Zero((N + 1) * (nx + nu));
+  l = Eigen::VectorXd::Zero((N + 1) * nx);
+  v = Eigen::VectorXd::Zero((N + 1) * nc);
+  y = Eigen::VectorXd::Zero((N + 1) * nc);
+}
+
+FBstabMpc::VariableRef::VariableRef(int nz, int nl, int nv, double* z_,
+                                    double* l_, double* v_, double* y_)
+    : z(z_, nz), l(l_, nl), v(v_, nv), y(y_, nv) {}
+
+FBstabMpc::VariableRef::VariableRef(Map z_, Map l_, Map v_, Map y_)
+    : z(z_.data(), z_.size()),
+      l(l_.data(), l_.size()),
+      v(v_.data(), v_.size()),
+      y(y_.data(), y_.size()) {}
+
+void FBstabMpc::VariableRef::fill(double a) {
+  z.fill(a);
+  l.fill(a);
+  v.fill(a);
+  y.fill(a);
+}
+
 FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
   if (N < 1 || nx < 1 || nu < 1 || nc < 1) {
     throw std::runtime_error(
@@ -48,27 +72,13 @@ FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
 FBstabMpc::FBstabMpc(const Eigen::Vector4d& s)
     : FBstabMpc(s(0), s(1), s(2), s(3)) {}
 
-SolverOut FBstabMpc::Solve(const ProblemData& qp, Variable* x,
-                           bool use_initial_guess) {
+template <class InputVector>
+SolverOut FBstabMpc::Solve(const ProblemData& qp, InputVector* x) {
   // The data object performs its own validation checks.
   MpcData data(&qp.Q, &qp.R, &qp.S, &qp.q, &qp.r, &qp.A, &qp.B, &qp.c, &qp.E,
                &qp.L, &qp.d, &qp.x0);
-  FullVariable x0(&x->z, &x->l, &x->v, &x->y);
-
-  if (data.N_ != N_ || data.nx_ != nx_ || data.nu_ != nu_ || data.nc_ != nc_) {
-    throw std::runtime_error(
-        "In FBstabMpc::Solve: mismatch between *this and data dimensions.");
-  }
-  if (x0.nz_ != nz_ || x0.nl_ != nl_ || x0.nv_ != nv_) {
-    throw std::runtime_error(
-        "In FBstabMpc::Solve: mismatch between *this and initial guess "
-        "dimensions.");
-  }
-
-  if (!use_initial_guess) {
-    x0.Fill(0.0);
-  }
-  return algorithm_->Solve(&data, &x0);
+  ValidateInputSizes(data, *x);
+  return algorithm_->Solve(&data, &x->z, &x->l, &x->v, &x->y);
 }
 
 void FBstabMpc::UpdateOptions(const Options& options) {
@@ -89,8 +99,26 @@ FBstabMpc::Options FBstabMpc::ReliableOptions() {
   return opts;
 }
 
+template <class InputVector>
+void FBstabMpc::ValidateInputSizes(const MpcData& data, const InputVector& x) {
+  if (data.N() != N_ || data.nx() != nx_ || data.nu() != nu_ ||
+      data.nc() != nc_) {
+    throw std::runtime_error(
+        "In FBstabMpc::Solve: mismatch between *this and data dimensions.");
+  }
+  if (x.z.size() != nz_ || x.l.size() != nl_ || x.v.size() != nv_ ||
+      x.y.size() != nv_) {
+    throw std::runtime_error(
+        "In FBstabMpc::Solve: mismatch between *this and initial guess "
+        "dimensions.");
+  }
+}
+
 // Explicit instantiation.
 template class FBstabAlgorithm<FullVariable, FullResidual, MpcData,
                                RiccatiLinearSolver, FullFeasibility>;
+
+template SolverOut FBstabMpc::Solve(const ProblemData& qp, Variable* x);
+template SolverOut FBstabMpc::Solve(const ProblemData& qp, VariableRef* x);
 
 }  // namespace fbstab

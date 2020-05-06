@@ -13,10 +13,6 @@
 
 namespace fbstab {
 
-/** Convenience typedef for the templated dense version of the algorithm. */
-using FBstabAlgoDense = FBstabAlgorithm<FullVariable, FullResidual, DenseData,
-                                        DenseCholeskySolver, FullFeasibility>;
-
 /**
  * FBstabDense implements the Proximally Stabilized Semismooth Algorithm
  * for solving convex quadratic programs of the following form (1):
@@ -50,22 +46,24 @@ using FBstabAlgoDense = FBstabAlgorithm<FullVariable, FullResidual, DenseData,
 class FBstabDense {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabDense)
+
+  // Convenience typedef.
+  using FBstabAlgoDense = FBstabAlgorithm<FullVariable, FullResidual, DenseData,
+                                          DenseCholeskySolver, FullFeasibility>;
+
   /** Structure to hold the problem data. */
   struct ProblemData {
+    ProblemData() = default;
     ProblemData(int nz, int nv) {
       H.resize(nz, nz);
       A.resize(nv, nz);
       f.resize(nz);
       b.resize(nv);
     }
-    /// nz x nz real positive semidefinite Hessian matrix.
-    Eigen::MatrixXd H;
-    /// nv x nz real constraint Jacobian.
-    Eigen::MatrixXd A;
-    /// nz real linear cost.
-    Eigen::VectorXd f;
-    /// nv real constraint rhs.
-    Eigen::VectorXd b;
+    Eigen::MatrixXd H;  /// nz x nz positive semidefinite Hessian matrix.
+    Eigen::MatrixXd A;  /// nv x nz constraint Jacobian.
+    Eigen::VectorXd f;  /// nz linear cost.
+    Eigen::VectorXd b;  /// nv  constraint rhs.
   };
 
   /**
@@ -78,14 +76,30 @@ class FBstabDense {
       v = Eigen::VectorXd::Zero(nv);
       y = Eigen::VectorXd::Zero(nv);
     }
-    /// Decision variables in \reals^nz.
-    Eigen::VectorXd z;
-    /// Equality duals
-    Eigen::VectorXd l;
-    /// Inequality duals in \reals^nv.
-    Eigen::VectorXd v;
-    /// Constraint margin, i.e., y = b-Az, in \reals^nv.
-    Eigen::VectorXd y;
+    Eigen::VectorXd z;  /// Decision variables in \reals^nz.
+    Eigen::VectorXd l;  /// Equality duals \in reals^nl
+    Eigen::VectorXd v;  /// Inequality duals in \reals^nv.
+    Eigen::VectorXd y;  /// Constraint margin, i.e., y = b-Az, in \reals^nv.
+  };
+
+  /**
+   * An input structure for reusing preallocated memory.
+   */
+  struct VariableRef {
+    // Initialization using raw pointers.
+    VariableRef(int nz, int nv, double* z_, double* l_, double* v_, double* y_);
+
+    // Initialization using Eigen::Maps.
+    using Map = Eigen::Map<Eigen::VectorXd>;
+    VariableRef(Map z_, Map l_, Map v_, Map y_);
+
+    // Fill all fields with a.
+    void fill(double a);
+
+    Map z;  /// Decision variables in \reals^nz.
+    Map l;  /// Equality duals
+    Map v;  /// Inequality duals in \reals^nv.
+    Map y;  /// Constraint margin, i.e., y = b-Az, in \reals^nv.
   };
 
   /** A Structure to hold options */
@@ -105,13 +119,14 @@ class FBstabDense {
    *
    * @param[in]   qp  problem data
    * @param[in,out] x   initial guess, overwritten with the solution
-   * @param[in] use_initial_guess if false the solver is initialized at the
-   * origin.
    *
    * @return Summary of the optimizer output, see fbstab_algorithm.h.
+   *
+   * The template parameter allows for both Variable and VariableRef type
+   * inputs.
    */
-  SolverOut Solve(const ProblemData& qp, Variable* x,
-                  bool use_initial_guess = true);
+  template <class InputVector>
+  SolverOut Solve(const ProblemData& qp, InputVector* x);
 
   /**
    * Allows for setting of solver options. See fbstab_algorithm.h for
@@ -129,6 +144,9 @@ class FBstabDense {
   int nz_ = 0;
   int nv_ = 0;
   int nl_ = 0;
+
+  template <class InputVariable>
+  void ValidateInputs(const DenseData& data, const InputVariable& x);
 
   Options opts_;
   std::unique_ptr<FBstabAlgoDense> algorithm_;

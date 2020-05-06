@@ -169,6 +169,11 @@ class MpcData : public Data {
 
   double ForcingNorm() const { return forcing_norm_; }
 
+  int N() const { return N_; }
+  int nx() const { return nx_; }
+  int nu() const { return nu_; }
+  int nc() const { return nc_; }
+
  private:
   int N_ = 0;   // horizon length
   int nx_ = 0;  // number of states
