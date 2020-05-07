@@ -43,6 +43,8 @@ min.    1/2  z'Hz + f'z
 s.t.         Az <= b
 ```
 
+A third version 'FBstabSparse' is currently being developed.
+
 ## Using FBstab
 FBstab is written in C++ 11 and uses [Bazel](https://bazel.build/) as its primary build system. FBstab has the following dependencies:
 
@@ -68,42 +70,21 @@ FBstab is still under active development so, while the mathematical problem defi
 FBstab is primarily developed on macOS but is highly portable, as long as a compliant C++ 11 compiler is available you should be able to build it. Versions of FBstab have been tested on Xenial and Bionic with gcc and clang compilers in the past and we plan to support MacOS, Linux, and Windows. We hope to get CI up and running soon. 
 
 ## Citing FBstab
-If you find FBstab useful and would like to cite it in your academic publications, we suggest the following BibTeX citation:
+If you find FBstab useful and would like to cite it in your academic publications, we recommend the following BibTeX citation:
 
 ```
-@article{fbstab,
+@article{liao2020fbstab,
+  title={Fbstab: A proximally stabilized semismooth algorithm for convex quadratic programming},
   author={Liao-McPherson, Dominic and Kolmanovsky, Ilya},
-  title={{FB}stab: A Proximally Stabilized Semismooth Algorithm for Convex Quadratic Programming},
-  journal={arXiv preprint arXiv:1901.04046},
-  year={2019}
+  journal={Automatica},
+  volume={113},
+  pages={108801},
+  year={2020},
+  publisher={Elsevier}
 }
 ```
 
-Other FBstab related citations:
-
-```
-@inproceedings{fbstab_cdc2019,
-  title={The {FBstab} Algorithm for Model Predictive Control: {An} Implicit Condensing Approach},
-  author={Liao-McPherson, Dominic and Kolmanovsky, Ilya},
-  booktitle={To appear at the 2019 IEEE Conference on Decision and Control (CDC)},
-}
-```
-
-```
-@article{fbrs, 
-author={D. {Liao-McPherson} and M. {Huang} and I. {Kolmanovsky}}, 
-journal={IEEE Transactions on Automatic Control}, 
-title={A Regularized and Smoothed Fischer–Burmeister Method for Quadratic Programming With Applications to Model Predictive Control}, 
-year={2019}, 
-volume={64}, 
-number={7}, 
-pages={2937-2944}, 
-doi={10.1109/TAC.2018.2872201}, 
-ISSN={0018-9286}, 
-month={July},}
-```
-
-## Acknowledgements
+## Acknowledgments
 The FBstab algorithm was originally developed with support from the National Science Foundation through the award [CMMI 1562209](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1562209). This C++ implementation was developed jointly by the Toyota Research Institute (TRI) and by the University of Michigan (UM) through a TRI/UM collaborative [project](https://bec.umich.edu/um-tri/semi-smooth-and-variational-methods-for-real-time-dynamic-optimization/).
 
 
