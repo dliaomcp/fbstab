@@ -47,7 +47,7 @@ fbstab_cc_library(
 
 fbstab_cc_library(
     name = "fbstab_algorithm",
-    hdrs = ["fbstab_algorithm.h"],
+    hdrs = ["fbstab_algorithm.h","fbstab_algorithm-impl.h"],
     deps = [
         "//tools:essential",
     ],
