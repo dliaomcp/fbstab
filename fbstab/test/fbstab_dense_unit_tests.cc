@@ -27,16 +27,17 @@ using VectorXd = Eigen::VectorXd;
  */
 GTEST_TEST(FBstabDense, FeasibleQP) {
   int n = 2;
+  int m = 0;
   int q = 2;
 
-  FBstabDense::Variable x0(n, q);
-  FBstabDense::ProblemData data(n, q);
+  FBstabDense::Variable x0(n, m, q);
+  FBstabDense::ProblemData data(n, m, q);
   data.H << 3, 1, 1, 1;
   data.f << 10, 5;
   data.A << -1, 0, 0, 1;
   data.b << 0, 0;
 
-  FBstabDense solver(n, q);
+  FBstabDense solver(n, m, q);
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
   opts.display_level = Display::OFF;
@@ -62,6 +63,49 @@ GTEST_TEST(FBstabDense, FeasibleQP) {
 /**
  * Tests FBstab with
  *
+ * H = [4 1]  f = [1]
+ *     [1 2]      [1]
+ *
+ * G = [1 1]  h = [1]
+ *
+ * A = [-1 0] b = [0]
+ *     [0 -1]     [0]
+ *
+ */
+GTEST_TEST(FBstabDense, FeasibleQPwithEQ) {
+  int n = 2;
+  int m = 1;
+  int q = 2;
+
+  FBstabDense::Variable x0(n, m, q);
+  FBstabDense::ProblemData data(n, m, q);
+  data.H << 4, 1, 1, 2;
+  data.f << 1, 1;
+  data.G << 1, 1;
+  data.h << 1;
+  data.A << -1, 0, 0, -1;
+  data.b << 0, 0;
+
+  FBstabDense solver(n, m, q);
+  FBstabDense::Options opts = FBstabDense::DefaultOptions();
+  opts.abs_tol = 1e-8;
+  opts.display_level = Display::OFF;
+  solver.UpdateOptions(opts);
+
+  SolverOut out = solver.Solve(data, &x0);
+
+  ASSERT_EQ(out.eflag, ExitFlag::SUCCESS);
+
+  VectorXd zopt(n);
+  zopt << 2.5e-1, 7.5e-1;
+  for (int i = 0; i < n; i++) {
+    EXPECT_NEAR(x0.z(i), zopt(i), 1e-8);
+  }
+}
+
+/**
+ * Tests FBstab with
+ *
  * H = [1 0]  f = [1]
  *     [0 0]      [0]
  *
@@ -76,26 +120,27 @@ GTEST_TEST(FBstabDense, FeasibleQP) {
  */
 GTEST_TEST(FBstabDense, DegenerateQP) {
   int n = 2;
+  int m = 0;
   int q = 5;
 
   // Using a ref variable this time
   std::unique_ptr<double[]> zmem(new double[n]);
-  std::unique_ptr<double[]> lmem(new double[1]);
+  std::unique_ptr<double[]> lmem(new double[m]);
   std::unique_ptr<double[]> vmem(new double[q]);
   std::unique_ptr<double[]> ymem(new double[q]);
 
-  FBstabDense::VariableRef x0(n, q, zmem.get(), lmem.get(), vmem.get(),
+  FBstabDense::VariableRef x0(n, m, q, zmem.get(), lmem.get(), vmem.get(),
                               ymem.get());
   x0.fill(0.0);
 
   // FBstabDense::Variable x0(n, q);
-  FBstabDense::ProblemData data(n, q);
+  FBstabDense::ProblemData data(n, m, q);
   data.H << 1, 0, 0, 0;
   data.f << 1, 0;
   data.A << 0, 0, 1, 0, 0, 1, -1, 0, 0, -1;
   data.b << 0, 3, 3, -1, -1;
 
-  FBstabDense solver(n, q);
+  FBstabDense solver(n, m, q);
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
   opts.display_level = Display::OFF;
@@ -129,19 +174,21 @@ GTEST_TEST(FBstabDense, DegenerateQP) {
  * This QP is infeasible, i.e.,
  * there is no z satisfying Az <= b
  */
+
 GTEST_TEST(FBstabDense, InfeasibleQP) {
   int n = 2;
+  int m = 0;
   int q = 5;
 
-  FBstabDense::ProblemData data(n, q);
+  FBstabDense::ProblemData data(n, m, q);
   data.H << 1, 0, 0, 0;
   data.f << 1, -1;
   data.A << 1, 1, 1, 0, 0, 1, -1, 0, 0, -1;
   data.b << 0, 3, 3, -1, -1;
 
-  FBstabDense::Variable x0(n, q);
+  FBstabDense::Variable x0(n, m, q);
 
-  FBstabDense solver(n, q);
+  FBstabDense solver(n, m, q);
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;
   opts.display_level = Display::OFF;
@@ -168,17 +215,18 @@ GTEST_TEST(FBstabDense, InfeasibleQP) {
  */
 GTEST_TEST(FBstabDense, UnboundedQP) {
   int n = 2;
+  int m = 0;
   int q = 4;
 
-  FBstabDense::ProblemData data(n, q);
+  FBstabDense::ProblemData data(n, m, q);
   data.H << 1, 0, 0, 0;
   data.f << 1, -1;
   data.A << 0, 0, 1, 0, -1, 0, 0, -1;
   data.b << 0, 3, -1, -1;
 
-  FBstabDense::Variable x0(n, q);
+  FBstabDense::Variable x0(n, m, q);
 
-  FBstabDense solver(n, q);
+  FBstabDense solver(n, m, q);
 
   FBstabDense::Options opts = FBstabDense::DefaultOptions();
   opts.abs_tol = 1e-8;

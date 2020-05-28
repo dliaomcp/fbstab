@@ -18,17 +18,19 @@ namespace fbstab {
  * for solving convex quadratic programs of the following form (1):
  *
  *     min.    1/2  z'Hz + f'z
- *     s.t.         Az <= b
+ *     s.t.    Gz = h
+ *             Az <= b
  *
  * where H is symmetric and positive semidefinite and its dual
  *
- *     min.   1/2  z'Hz + b'v
- *     s.t.   Hz + f + A'v = 0
+ *     min.   1/2  z'Hz + b'v + h'l
+ *     s.t.   Hz + f + A'v + G'l = 0
  *            v >= 0.
  *
  * Or equivalently for solving its KKT system
  *
- *     Hz + f + A' v = 0
+ *     Hz + f + A'v + G'l = 0
+ *     h - Gz = 0
  *     Az <= b, v >= 0
  *     (b - Az)' v = 0
  *
@@ -39,8 +41,9 @@ namespace fbstab {
  * This method can detect unboundedness/infeasibility and accepts
  * arbitrary initial guesses.
  *
- * The problem is of size (nz,nv) where:
+ * The problem is of size (nz, nl, nv) where:
  * - nz > 0 is the number of decision variables
+ * - nl >= 0 is the number of equality constraints
  * - nv > 0 is the number of inequality constraints
  */
 class FBstabDense {
@@ -54,16 +57,20 @@ class FBstabDense {
   /** Structure to hold the problem data. */
   struct ProblemData {
     ProblemData() = default;
-    ProblemData(int nz, int nv) {
+    ProblemData(int nz, int nl, int nv) {
       H.resize(nz, nz);
+      G.resize(nl, nz);
       A.resize(nv, nz);
       f.resize(nz);
+      h.resize(nl);
       b.resize(nv);
     }
     Eigen::MatrixXd H;  /// nz x nz positive semidefinite Hessian matrix.
-    Eigen::MatrixXd A;  /// nv x nz constraint Jacobian.
+    Eigen::MatrixXd G;  /// nl x nz equality Jacobian
+    Eigen::MatrixXd A;  /// nv x nz inequality Jacobian.
     Eigen::VectorXd f;  /// nz linear cost.
-    Eigen::VectorXd b;  /// nv  constraint rhs.
+    Eigen::VectorXd h;  /// nl equality rhs
+    Eigen::VectorXd b;  /// nv inequality rhs.
   };
 
   /**
@@ -71,8 +78,9 @@ class FBstabDense {
    * The vectors will be overwritten with the solution.
    */
   struct Variable {
-    Variable(int nz, int nv) {
+    Variable(int nz, int nl, int nv) {
       z = Eigen::VectorXd::Zero(nz);
+      l = Eigen::VectorXd::Zero(nl);
       v = Eigen::VectorXd::Zero(nv);
       y = Eigen::VectorXd::Zero(nv);
     }
@@ -87,7 +95,8 @@ class FBstabDense {
    */
   struct VariableRef {
     // Initialization using raw pointers.
-    VariableRef(int nz, int nv, double* z_, double* l_, double* v_, double* y_);
+    VariableRef(int nz, int nl, int nv, double* z_, double* l_, double* v_,
+                double* y_);
 
     // Initialization using Eigen::Maps.
     using Map = Eigen::Map<Eigen::VectorXd>;
@@ -110,9 +119,10 @@ class FBstabDense {
    * be solved. Throws a runtime_error if any inputs are non-positive.
    *
    * @param[in] number of decision variables
+   * @param[in] number of equality constraints
    * @param[in] number of inequality constraints
    */
-  FBstabDense(int nz, int nv);
+  FBstabDense(int nz, int nl, int nv);
 
   /**
    * Solves an instance of (1)
@@ -142,8 +152,8 @@ class FBstabDense {
 
  private:
   int nz_ = 0;
-  int nv_ = 0;
   int nl_ = 0;
+  int nv_ = 0;
 
   template <class InputVariable>
   void ValidateInputs(const DenseData& data, const InputVariable& x);

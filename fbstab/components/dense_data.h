@@ -11,7 +11,8 @@ namespace fbstab {
  * Represents data for quadratic programing problems of the following type (1):
  *
  * min.    1/2  z'Hz + f'z
- * s.t.         Az <= b
+ * s.t.    Gz = h
+ *         Az <= b
  *
  * where H is symmetric and positive semidefinite.
  */
@@ -25,6 +26,8 @@ class DenseData : public Data {
    *
    * @param[in] H Hessian matrix
    * @param[in] f Linear term
+   * @param[in] G Constraint matrix
+   * @param[in] h Constraint vector
    * @param[in] A Constraint matrix
    * @param[in] b Constraint vector
    *
@@ -32,6 +35,7 @@ class DenseData : public Data {
    * the sizes of the inputs are inconsistent.
    */
   DenseData(const Eigen::MatrixXd* H, const Eigen::VectorXd* f,
+            const Eigen::MatrixXd* G, const Eigen::VectorXd* h,
             const Eigen::MatrixXd* A, const Eigen::VectorXd* b);
 
   /** Performs the operation y <- a*H*x + b*y */
@@ -46,13 +50,6 @@ class DenseData : public Data {
   void gemvAT(const Eigen::VectorXd& x, double a, double b,
               Eigen::VectorXd* y) const;
 
-  /** Performs the operation y <- a*f + y */
-  void axpyf(double a, Eigen::VectorXd* y) const;
-
-  /** Performs the operation y <- a*b + y */
-  void axpyb(double a, Eigen::VectorXd* y) const;
-
-  // These are no-ops for the time being
   /** Performs the operation y <- a*G*x + b*y */
   void gemvG(const Eigen::VectorXd& x, double a, double b,
              Eigen::VectorXd* y) const;
@@ -60,6 +57,12 @@ class DenseData : public Data {
   /** Performs the operation y <- a*G'*x + b*y */
   void gemvGT(const Eigen::VectorXd& x, double a, double b,
               Eigen::VectorXd* y) const;
+
+  /** Performs the operation y <- a*f + y */
+  void axpyf(double a, Eigen::VectorXd* y) const;
+
+  /** Performs the operation y <- a*b + y */
+  void axpyb(double a, Eigen::VectorXd* y) const;
 
   /** Performs the operation y <- a*h + y */
   void axpyh(double a, Eigen::VectorXd* y) const;
@@ -79,6 +82,8 @@ class DenseData : public Data {
 
   const Eigen::MatrixXd* H_ = nullptr;
   const Eigen::VectorXd* f_ = nullptr;
+  const Eigen::MatrixXd* G_ = nullptr;
+  const Eigen::VectorXd* h_ = nullptr;
   const Eigen::MatrixXd* A_ = nullptr;
   const Eigen::VectorXd* b_ = nullptr;
 

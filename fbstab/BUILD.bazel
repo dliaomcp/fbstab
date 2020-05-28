@@ -67,6 +67,7 @@ fbstab_cc_library(
     ],
 )
 
+
 # tests
 fbstab_cc_googletest(
     name = "dense_unit_tests",
@@ -83,6 +84,14 @@ fbstab_cc_googletest(
     deps = [
         ":fbstab_mpc",
         ":ocp_generator",
+        "@eigen",
+    ],
+)
+
+fbstab_cc_googletest(
+    name = "eigen_tests",
+    srcs = ["test/eigen_tests.cc"],
+    deps = [
         "@eigen",
     ],
 )

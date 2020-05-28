@@ -17,14 +17,8 @@ class DenseComponentUnitTests;
 
 /**
  * A class for computing the search directions used by the FBstab QP Solver.
- * It solves systems of linear equations of the form
- *
- *      [Hs   A'] dz = rz  <==>  V*dx = r
- *      [-CA  D ] dv   rv
- *
- * using a Schur complement approach as described in (28) and (29) of
- * https://arxiv.org/pdf/1901.04046.pdf. Note that this code doesn't have
- * equality constraints so is a simplification of (28) and (29).
+ * It solves the systems of linear equations described in (28) and (29) of
+ * https://arxiv.org/pdf/1901.04046.pdf.
  *
  * This class allocates its own workspace memory and splits step computation
  * into solve and factor steps to allow for solving with multiple
@@ -38,10 +32,11 @@ class DenseCholeskySolver
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseCholeskySolver)
   /**
    * Allocates workspace memory.
-   * @param [nz] Number of decision variables.
-   * @param [nv] Number of inequality constraints.
+   * @param [nz] Number of decision variables > 0
+   * @param [nl] Number of equality constraints >= 0
+   * @param [nv] Number of inequality constraints > 0
    */
-  DenseCholeskySolver(int nz, int nv);
+  DenseCholeskySolver(int nz, int nl, int nv);
 
   /**
    * Links to problem data needed to perform calculations.
@@ -92,6 +87,7 @@ class DenseCholeskySolver
  private:
   friend class test::DenseComponentUnitTests;
   int nz_ = 0;  // number of decision variables
+  int nl_ = 0;  // number of equality constraints
   int nv_ = 0;  // number of inequality constraints
 
   double alpha_ = 0.95;
@@ -100,6 +96,7 @@ class DenseCholeskySolver
 
   // workspace variables
   Eigen::MatrixXd K_;
+  Eigen::MatrixXd E_;
   Eigen::LDLT<Eigen::MatrixXd> ldlt_;
   mutable Eigen::VectorXd r1_;
   mutable Eigen::VectorXd r2_;

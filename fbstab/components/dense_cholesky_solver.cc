@@ -9,17 +9,19 @@
 
 namespace fbstab {
 
-DenseCholeskySolver::DenseCholeskySolver(int nz, int nv) : ldlt_(nz) {
-  if (nz <= 0 || nv <= 0) {
+DenseCholeskySolver::DenseCholeskySolver(int nz, int nl, int nv)
+    : ldlt_(nz + nl) {
+  if (nz <= 0 || nv <= 0 || nl < 0) {
     throw std::runtime_error(
-        "In DenseCholeskySolver::DenseCholeskySolver: inputs must be "
-        "positive.");
+        "In DenseCholeskySolver: nz and nv must be > 0 and nl >= 0");
   }
   nz_ = nz;
+  nl_ = nl;
   nv_ = nv;
 
-  K_.resize(nz_, nz_);
-  r1_.resize(nz_);
+  K_.resize(nz_ + nl_, nz_ + nl_);
+  E_.resize(nz_, nz_);
+  r1_.resize(nz_ + nl_);
   r2_.resize(nv_);
   Gamma_.resize(nv_);
   mus_.resize(nv_);
@@ -43,11 +45,11 @@ bool DenseCholeskySolver::Initialize(const FullVariable& x,
         "In DenseCholeskySolver::Factor: sigma must be positive.");
   }
   const Eigen::MatrixXd& H = *(data_->H_);
+  const Eigen::MatrixXd& G = *(data_->G_);
   const Eigen::MatrixXd& A = *(data_->A_);
 
-  K_ = H + sigma * Eigen::MatrixXd::Identity(nz_, nz_);
-
-  // K <- K + A'*diag(Gamma(x))*A
+  // E = H + sigma I + A'*diag(Gamma(x))*A
+  E_ = H + sigma * Eigen::MatrixXd::Identity(nz_, nz_);
   Eigen::Vector2d pfb_gradient;
   for (int i = 0; i < nv_; i++) {
     const double ys = x.y(i) + sigma * (x.v(i) - xbar.v(i));
@@ -58,7 +60,13 @@ bool DenseCholeskySolver::Initialize(const FullVariable& x,
   }
   // B is used to avoid temporaries
   B_.noalias() = Gamma_.asDiagonal() * A;
-  K_.noalias() += A.transpose() * B_;
+  E_.noalias() += A.transpose() * B_;
+
+  // K = [E G']
+  //     [G -S]
+  K_.block(0, 0, nz_, nz_) = E_;
+  K_.block(nz_, 0, nl_, nz_) = G;
+  K_.block(nz_, nz_, nl_, nl_) = -sigma * Eigen::MatrixXd::Identity(nl_, nl_);
 
   // Factor K = LDL'
   ldlt_.compute(K_);
@@ -80,7 +88,7 @@ bool DenseCholeskySolver::Solve(const FullResidual& r, FullVariable* x) const {
         "In DenseCholeskySolver::Solve residual and variable objects must be "
         "the same size");
   }
-  if (x->nz_ != nz_ || x->nv_ != nv_) {
+  if (x->nz_ != nz_ || x->nv_ != nv_ || x->nl_ != nl_) {
     throw std::runtime_error(
         "In DenseCholeskySolver::Factor: inputs must match object size.");
   }
@@ -88,18 +96,22 @@ bool DenseCholeskySolver::Solve(const FullResidual& r, FullVariable* x) const {
   const Eigen::VectorXd& b = *(data_->b_);
 
   // This method solves the system:
-  // Kz = rz - A'*D^-1*rv
+  // [E G'] [z] = [rz - A'*D^-1 * rv]
+  // [G -S] [l]   [-rl              ]
   // Dv = rv + C*A*z
   // Where D = diag(mus), C = diag(gamma) and K has been precomputed by the
   // factor routine. See (28) and (29) in https://arxiv.org/pdf/1901.04046.pdf
 
   // Compute rz - A'*(rv./mus) and store it in r1_.
   r2_ = r.v().cwiseQuotient(mus_);
-  r1_.noalias() = r.z() - A.transpose() * r2_;
+  // r1_.noalias() = r.z() - A.transpose() * r2_;
+  r1_.segment(0, nz_).noalias() = r.z() - A.transpose() * r2_;
+  r1_.segment(nz_, nl_) = -r.l();
 
-  // Solve K*z = rz - A'*(rv./mus)
-  // Using the precomputed factorization
-  x->z().noalias() = ldlt_.solve(r1_);
+  // Solve using the precomputed factorization then extract
+  r1_ = ldlt_.solve(r1_);
+  x->z() = r1_.segment(0, nz_);
+  x->l() = r1_.segment(nz_, nl_);
 
   // Compute v = diag(1/mus) * (rv + diag(gamma)*A*z)
   // written so as to avoid temporary creation

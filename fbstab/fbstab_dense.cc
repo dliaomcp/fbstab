@@ -14,9 +14,9 @@
 
 namespace fbstab {
 
-FBstabDense::VariableRef::VariableRef(int nz, int nv, double* z_, double* l_,
-                                      double* v_, double* y_)
-    : z(z_, nz), l(l_, 0), v(v_, nv), y(y_, nv) {}
+FBstabDense::VariableRef::VariableRef(int nz, int nl, int nv, double* z_,
+                                      double* l_, double* v_, double* y_)
+    : z(z_, nz), l(l_, nl), v(v_, nv), y(y_, nv) {}
 
 FBstabDense::VariableRef::VariableRef(Map z_, Map l_, Map v_, Map y_)
     : z(z_.data(), z_.size()),
@@ -31,14 +31,16 @@ void FBstabDense::VariableRef::fill(double a) {
   y.fill(a);
 }
 
-FBstabDense::FBstabDense(int nz, int nv) {
-  if (nz <= 0 || nv <= 0) {
+FBstabDense::FBstabDense(int nz, int nl, int nv) {
+  if (nz <= 0 || nv <= 0 || nl < 0) {
     throw std::runtime_error(
-        "In FBstabDense::FBstabDense: Inputs must be positive.");
+        "In FBstabDense::FBstabDense: nz and nv must be positive, nl "
+        "nonnegative");
   }
+
   nz_ = nz;
+  nl_ = nl;
   nv_ = nv;
-  nl_ = 0;
 
   x1_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
   x2_ = tools::make_unique<FullVariable>(nz_, nl_, nv_);
@@ -47,7 +49,7 @@ FBstabDense::FBstabDense(int nz, int nv) {
   r1_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
   r2_ = tools::make_unique<FullResidual>(nz_, nl_, nv_);
   feasibility_checker_ = tools::make_unique<FullFeasibility>(nz_, nl_, nv_);
-  linear_solver_ = tools::make_unique<DenseCholeskySolver>(nz_, nv_);
+  linear_solver_ = tools::make_unique<DenseCholeskySolver>(nz_, nl_, nv_);
 
   algorithm_ = tools::make_unique<FBstabAlgoDense>(
       x1_.get(), x2_.get(), x3_.get(), x4_.get(), r1_.get(), r2_.get(),
@@ -59,7 +61,7 @@ FBstabDense::FBstabDense(int nz, int nv) {
 template <class InputVector>
 SolverOut FBstabDense::Solve(const ProblemData& qp, InputVector* x) {
   // Data performs its own validation checks.
-  DenseData data(&qp.H, &qp.f, &qp.A, &qp.b);
+  DenseData data(&qp.H, &qp.f, &qp.G, &qp.h, &qp.A, &qp.b);
   ValidateInputs(data, *x);
   return algorithm_->Solve(&data, &x->z, &x->l, &x->v, &x->y);
 }
@@ -84,7 +86,7 @@ FBstabDense::Options FBstabDense::ReliableOptions() {
 
 template <class InputVector>
 void FBstabDense::ValidateInputs(const DenseData& data, const InputVector& x) {
-  if (nz_ != data.nz() || nv_ != data.nv()) {
+  if (nz_ != data.nz() || nv_ != data.nv() || nl_ != data.nl()) {
     throw std::runtime_error(
         "In FBstabDense::Solve: mismatch between *this and data dimensions.");
   }
