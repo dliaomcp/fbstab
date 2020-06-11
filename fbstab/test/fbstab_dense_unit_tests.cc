@@ -119,26 +119,43 @@ GTEST_TEST(FBstabDense, FeasibleQPwithEQ) {
  * [1] x [1,3]
  */
 GTEST_TEST(FBstabDense, DegenerateQP) {
-  int n = 2;
-  int m = 0;
-  int q = 5;
+  constexpr int n = 2;
+  constexpr int m = 0;
+  constexpr int q = 5;
 
-  // Using a ref variable this time
+  // Using a ref variable
   std::unique_ptr<double[]> zmem(new double[n]);
   std::unique_ptr<double[]> lmem(new double[m]);
   std::unique_ptr<double[]> vmem(new double[q]);
   std::unique_ptr<double[]> ymem(new double[q]);
 
-  FBstabDense::VariableRef x0(n, m, q, zmem.get(), lmem.get(), vmem.get(),
-                              ymem.get());
+  Eigen::Map<VectorXd> z(zmem.get(), n);
+  Eigen::Map<VectorXd> l(lmem.get(), m);
+  Eigen::Map<VectorXd> v(vmem.get(), q);
+  Eigen::Map<VectorXd> y(ymem.get(), q);
+
+  FBstabDense::VariableRef x0(&z, &l, &v, &y);
   x0.fill(0.0);
 
-  // FBstabDense::Variable x0(n, q);
-  FBstabDense::ProblemData data(n, m, q);
-  data.H << 1, 0, 0, 0;
-  data.f << 1, 0;
-  data.A << 0, 0, 1, 0, 0, 1, -1, 0, 0, -1;
-  data.b << 0, 3, 3, -1, -1;
+  std::unique_ptr<double[]> Hmem(new double[n * n]);
+  std::unique_ptr<double[]> fmem(new double[n]);
+  std::unique_ptr<double[]> Gmem(new double[m * n]);
+  std::unique_ptr<double[]> hmem(new double[m]);
+  std::unique_ptr<double[]> Amem(new double[q * n]);
+  std::unique_ptr<double[]> bmem(new double[q]);
+
+  Eigen::Map<MatrixXd> H(Hmem.get(), n, n);
+  Eigen::Map<VectorXd> f(fmem.get(), n);
+  Eigen::Map<MatrixXd> A(Amem.get(), q, n);
+  Eigen::Map<VectorXd> b(bmem.get(), q);
+  Eigen::Map<MatrixXd> G(Gmem.get(), m, n);
+  Eigen::Map<VectorXd> h(hmem.get(), m);
+  H << 1, 0, 0, 0;
+  f << 1, 0;
+  A << 0, 0, 1, 0, 0, 1, -1, 0, 0, -1;
+  b << 0, 3, 3, -1, -1;
+
+  FBstabDense::ProblemDataRef data(&H, &f, &G, &h, &A, &b);
 
   FBstabDense solver(n, m, q);
   FBstabDense::Options opts = FBstabDense::DefaultOptions();

@@ -5,6 +5,7 @@
 
 #include "fbstab/components/abstract_components.h"
 #include "tools/copyable_macros.h"
+#include "tools/matrix_sequence.h"
 
 namespace fbstab {
 
@@ -46,23 +47,55 @@ class MpcData : public Data {
    * Creates problem data and performs input validation. Throws
    * a runtime_error if the problem data aren't consistently sized.
    *
-   * This class assumes that the pointers to the data remain valid.
+   * This class doesn't take ownership of the input data and assumes all input
+   * pointers remain valid.
    *
    * All arguments are inputs and point to data defining a linear-quadratic
    * optimal control problem, see the class comment.
+   *
+   * The template allows MatrixSequences/Eigen::VectorXds and
+   * MapMatrixSequences/Eigen::Map<Eigen::VectorXd> input combinations.
+   *
+   * @tparam Sequence: MatrixSequence or MapMatrixSequence
+   * @tparam Vector: Eigen::VectorXd or Eigen::Map<Eigen::VectorXd>
    */
-  MpcData(const std::vector<Eigen::MatrixXd>* Q,
-          const std::vector<Eigen::MatrixXd>* R,
-          const std::vector<Eigen::MatrixXd>* S,
-          const std::vector<Eigen::VectorXd>* q,
-          const std::vector<Eigen::VectorXd>* r,
-          const std::vector<Eigen::MatrixXd>* A,
-          const std::vector<Eigen::MatrixXd>* B,
-          const std::vector<Eigen::VectorXd>* c,
-          const std::vector<Eigen::MatrixXd>* E,
-          const std::vector<Eigen::MatrixXd>* L,
-          const std::vector<Eigen::VectorXd>* d, const Eigen::VectorXd* x0);
+  template <class Sequence, class Vector>
+  MpcData(const Sequence* Q, const Sequence* R, const Sequence* S,
+          const Sequence* q, const Sequence* r, const Sequence* A,
+          const Sequence* B, const Sequence* c, const Sequence* E,
+          const Sequence* L, const Sequence* d, const Vector* x0)
+      : Q_(*Q),
+        R_(*R),
+        S_(*S),
+        q_(*q),
+        r_(*r),
+        A_(*A),
+        B_(*B),
+        c_(*c),
+        E_(*E),
+        L_(*L),
+        d_(*d),
+        x0_(x0->data(), x0->size()) {
+    ValidateInputs();
 
+    N_ = B_.length();
+    nx_ = B_.rows();
+    nu_ = B_.cols();
+    nc_ = E_.rows();
+    nz_ = (N_ + 1) * (nx_ + nu_);
+    nl_ = (N_ + 1) * nx_;
+    nv_ = (N_ + 1) * nc_;
+
+    // Compute the forcing norm = ||[f,h,b]||
+    forcing_norm_ = 0.0;
+    for (int i = 0; i < N_ + 1; i++) {
+      forcing_norm_ += q_(i).squaredNorm();
+      forcing_norm_ += r_(i).squaredNorm();
+      forcing_norm_ += d_(i).squaredNorm();
+      forcing_norm_ += (i == 0 ? x0_.squaredNorm() : c_(i - 1).squaredNorm());
+    }
+    forcing_norm_ = sqrt(forcing_norm_);
+  }
   /**
    * Computes the operation y <- a*H*x + b*y without forming H explicitly.
    * This implements a BLAS operation, see
@@ -185,25 +218,21 @@ class MpcData : public Data {
 
   double forcing_norm_ = 0.0;
 
-  const std::vector<Eigen::MatrixXd>* Q_ = nullptr;
-  const std::vector<Eigen::MatrixXd>* R_ = nullptr;
-  const std::vector<Eigen::MatrixXd>* S_ = nullptr;
-  const std::vector<Eigen::VectorXd>* q_ = nullptr;
-  const std::vector<Eigen::VectorXd>* r_ = nullptr;
-  const std::vector<Eigen::MatrixXd>* A_ = nullptr;
-  const std::vector<Eigen::MatrixXd>* B_ = nullptr;
-  const std::vector<Eigen::VectorXd>* c_ = nullptr;
-  const std::vector<Eigen::MatrixXd>* E_ = nullptr;
-  const std::vector<Eigen::MatrixXd>* L_ = nullptr;
-  const std::vector<Eigen::VectorXd>* d_ = nullptr;
-  const Eigen::VectorXd* x0_ = nullptr;
+  const MapMatrixSequence Q_;
+  const MapMatrixSequence R_;
+  const MapMatrixSequence S_;
+  const MapMatrixSequence q_;
+  const MapMatrixSequence r_;
+  const MapMatrixSequence A_;
+  const MapMatrixSequence B_;
+  const MapMatrixSequence c_;
+  const MapMatrixSequence E_;
+  const MapMatrixSequence L_;
+  const MapMatrixSequence d_;
+  const Eigen::Map<const Eigen::VectorXd> x0_;
 
-  // Throws an exception if any of the input vectors have inconsistent lengths.
-  void validate_length() const;
-
-  // Throws an exception if any of the input matrices have inconsistent sizes.
-  // Assumes that validate_length() has already been called.
-  void validate_size() const;
+  // Throws an exception if any of the inputs have inconsistent sizes.
+  void ValidateInputs() const;
 
   friend class test::MpcComponentUnitTests;
   friend class RiccatiLinearSolver;

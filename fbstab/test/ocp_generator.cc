@@ -40,6 +40,19 @@ FBstabMpc::ProblemData OcpGenerator::GetFBstabInput() const {
   return s;
 }
 
+FBstabMpc::ProblemDataRef OcpGenerator::GetFBstabInputRef() const {
+  if (!data_populated_) {
+    throw std::runtime_error(
+        "In OcpGenerator::GetFBstabInput: Call a problem creator method "
+        "first.");
+  }
+
+  FBstabMpc::ProblemDataRef s(&Q_, &R_, &S_, &q_, &r_, &A_, &B_, &c_, &E_, &L_,
+                              &d_, &x0_);
+
+  return s;
+}
+
 OcpGenerator::SimulationInputs OcpGenerator::GetSimulationInputs() const {
   if (!data_populated_) {
     throw std::runtime_error(
@@ -356,30 +369,6 @@ void OcpGenerator::CopyOverHorizon(const MatrixXd& Q, const MatrixXd& R,
                                    const MatrixXd& E, const MatrixXd& L,
                                    const VectorXd& d, const VectorXd& x0,
                                    int N) {
-  // These are indexed from 0 to N.
-  for (int i = 0; i < N + 1; i++) {
-    Q_.push_back(Q);
-    R_.push_back(R);
-    S_.push_back(S);
-    q_.push_back(q);
-    r_.push_back(r);
-    if (i == 0) {  // don't impose constraints on x0
-      MatrixXd E0 = MatrixXd::Zero(E.rows(), E.cols());
-      E_.push_back(E0);
-    } else {
-      E_.push_back(E);
-    }
-    L_.push_back(L);
-    d_.push_back(d);
-  }
-
-  // These are indexed from 0 to N-1.
-  for (int i = 0; i < N; i++) {
-    A_.push_back(A);
-    B_.push_back(B);
-    c_.push_back(c);
-  }
-  x0_ = x0;
   N_ = N;
   nx_ = Q.rows();
   nu_ = R.rows();
@@ -387,6 +376,47 @@ void OcpGenerator::CopyOverHorizon(const MatrixXd& Q, const MatrixXd& R,
   nz_ = (nx_ + nu_) * (N + 1);
   nl_ = nx_ * (N + 1);
   nv_ = nc_ * (N + 1);
+
+  // Allocate for everything
+  Q_ = MatrixSequence(N_ + 1, nx_, nx_);
+  R_ = MatrixSequence(N_ + 1, nu_, nu_);
+  S_ = MatrixSequence(N_ + 1, nu_, nx_);
+  q_ = MatrixSequence(N_ + 1, nx_);
+  r_ = MatrixSequence(N_ + 1, nu_);
+
+  A_ = MatrixSequence(N_, nx_, nx_);
+  B_ = MatrixSequence(N_, nx_, nu_);
+  c_ = MatrixSequence(N_, nx_);
+
+  E_ = MatrixSequence(N_ + 1, nc_, nx_);
+  L_ = MatrixSequence(N_ + 1, nc_, nu_);
+  d_ = MatrixSequence(N_ + 1, nc_);
+  x0_ = x0;
+
+  // These are indexed from 0 to N.
+  for (int i = 0; i < N + 1; i++) {
+    Q_(i) = Q;
+    R_(i) = R;
+    S_(i) = S;
+    q_(i) = q;
+    r_(i) = r;
+    if (i == 0) {  // don't impose constraints on x0
+      MatrixXd E0 = MatrixXd::Zero(E.rows(), E.cols());
+      E_(i) = E0;
+    } else {
+      E_(i) = E;
+    }
+    L_(i) = L;
+    d_(i) = d;
+  }
+
+  // These are indexed from 0 to N-1.
+  for (int i = 0; i < N; i++) {
+    A_(i) = A;
+    B_(i) = B;
+    c_(i) = c;
+  }
+
   data_populated_ = true;
 }
 

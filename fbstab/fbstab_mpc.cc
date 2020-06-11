@@ -10,26 +10,46 @@
 #include "fbstab/components/full_variable.h"
 #include "fbstab/components/mpc_data.h"
 #include "fbstab/components/riccati_linear_solver.h"
+#include "tools/matrix_sequence.h"
 #include "tools/utilities.h"
 
 namespace fbstab {
 
-void FBstabMpc::Variable::initialize(int N, int nx, int nu, int nc) {
+FBstabMpc::ProblemDataRef::ProblemDataRef(
+    const MatrixSequence* Q_, const MatrixSequence* R_,
+    const MatrixSequence* S_, const MatrixSequence* q_,
+    const MatrixSequence* r_, const MatrixSequence* A_,
+    const MatrixSequence* B_, const MatrixSequence* c_,
+    const MatrixSequence* E_, const MatrixSequence* L_,
+    const MatrixSequence* d_, const Eigen::VectorXd* x0_)
+    : Q(*Q_),
+      R(*R_),
+      S(*S_),
+      q(*q_),
+      r(*r_),
+      A(*A_),
+      B(*B_),
+      c(*c_),
+      E(*E_),
+      L(*L_),
+      d(*d_),
+      x0(x0_->data(), x0_->size()) {}
+
+FBstabMpc::Variable::Variable(int N, int nx, int nu, int nc) {
   z = Eigen::VectorXd::Zero((N + 1) * (nx + nu));
   l = Eigen::VectorXd::Zero((N + 1) * nx);
   v = Eigen::VectorXd::Zero((N + 1) * nc);
   y = Eigen::VectorXd::Zero((N + 1) * nc);
 }
 
-FBstabMpc::VariableRef::VariableRef(int nz, int nl, int nv, double* z_,
-                                    double* l_, double* v_, double* y_)
-    : z(z_, nz), l(l_, nl), v(v_, nv), y(y_, nv) {}
+FBstabMpc::Variable::Variable(const Eigen::Vector4d& s)
+    : Variable(s(0), s(1), s(2), s(3)) {}
 
-FBstabMpc::VariableRef::VariableRef(Map z_, Map l_, Map v_, Map y_)
-    : z(z_.data(), z_.size()),
-      l(l_.data(), l_.size()),
-      v(v_.data(), v_.size()),
-      y(y_.data(), y_.size()) {}
+FBstabMpc::VariableRef::VariableRef(Eigen::Map<Eigen::VectorXd> z_,
+                                    Eigen::Map<Eigen::VectorXd> l_,
+                                    Eigen::Map<Eigen::VectorXd> v_,
+                                    Eigen::Map<Eigen::VectorXd> y_)
+    : z(z_), l(l_), v(v_), y(y_) {}
 
 void FBstabMpc::VariableRef::fill(double a) {
   z.fill(a);
@@ -43,7 +63,6 @@ FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
     throw std::runtime_error(
         "In FBstabMpc::FBstabMpc: problem sizes must be positive.");
   }
-
   N_ = N;
   nx_ = nx;
   nu_ = nu;
@@ -62,7 +81,7 @@ FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
   feasibility_checker_ = tools::make_unique<FullFeasibility>(nz_, nl_, nv_);
   linear_solver_ = tools::make_unique<RiccatiLinearSolver>(N, nx, nu, nc);
 
-  algorithm_ = tools::make_unique<FBstabAlgoMpc>(
+  algorithm_ = tools::make_unique<Algorithm>(
       x1_.get(), x2_.get(), x3_.get(), x4_.get(), r1_.get(), r2_.get(),
       linear_solver_.get(), feasibility_checker_.get());
 
@@ -72,18 +91,9 @@ FBstabMpc::FBstabMpc(int N, int nx, int nu, int nc) {
 FBstabMpc::FBstabMpc(const Eigen::Vector4d& s)
     : FBstabMpc(s(0), s(1), s(2), s(3)) {}
 
-template <class InputVector>
-SolverOut FBstabMpc::Solve(const ProblemData& qp, InputVector* x) {
-  // The data object performs its own validation checks.
-  MpcData data(&qp.Q, &qp.R, &qp.S, &qp.q, &qp.r, &qp.A, &qp.B, &qp.c, &qp.E,
-               &qp.L, &qp.d, &qp.x0);
-  ValidateInputSizes(data, *x);
-  return algorithm_->Solve(&data, &x->z, &x->l, &x->v, &x->y);
-}
-
 void FBstabMpc::UpdateOptions(const Options& options) {
-  // No need to validate since there are no additional options and the algorithm
-  // will check the algorithmic ones.
+  // No need to validate since there are no additional options and the
+  // algorithm will check the algorithmic ones.
   algorithm_->UpdateParameters(&options);
 }
 
@@ -99,26 +109,8 @@ FBstabMpc::Options FBstabMpc::ReliableOptions() {
   return opts;
 }
 
-template <class InputVector>
-void FBstabMpc::ValidateInputSizes(const MpcData& data, const InputVector& x) {
-  if (data.N() != N_ || data.nx() != nx_ || data.nu() != nu_ ||
-      data.nc() != nc_) {
-    throw std::runtime_error(
-        "In FBstabMpc::Solve: mismatch between *this and data dimensions.");
-  }
-  if (x.z.size() != nz_ || x.l.size() != nl_ || x.v.size() != nv_ ||
-      x.y.size() != nv_) {
-    throw std::runtime_error(
-        "In FBstabMpc::Solve: mismatch between *this and initial guess "
-        "dimensions.");
-  }
-}
-
 // Explicit instantiation.
-template class FBstabAlgorithm<FullVariable, FullResidual, MpcData,
-                               RiccatiLinearSolver, FullFeasibility>;
-
-template SolverOut FBstabMpc::Solve(const ProblemData& qp, Variable* x);
-template SolverOut FBstabMpc::Solve(const ProblemData& qp, VariableRef* x);
+template class FBstabAlgorithm<FullVariable, FullResidual, RiccatiLinearSolver,
+                               FullFeasibility>;
 
 }  // namespace fbstab

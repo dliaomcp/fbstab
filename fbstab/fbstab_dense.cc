@@ -14,30 +14,12 @@
 
 namespace fbstab {
 
-FBstabDense::VariableRef::VariableRef(int nz, int nl, int nv, double* z_,
-                                      double* l_, double* v_, double* y_)
-    : z(z_, nz), l(l_, nl), v(v_, nv), y(y_, nv) {}
-
-FBstabDense::VariableRef::VariableRef(Map z_, Map l_, Map v_, Map y_)
-    : z(z_.data(), z_.size()),
-      l(l_.data(), l_.size()),
-      v(v_.data(), v_.size()),
-      y(y_.data(), y_.size()) {}
-
-void FBstabDense::VariableRef::fill(double a) {
-  z.fill(a);
-  l.fill(a);
-  v.fill(a);
-  y.fill(a);
-}
-
 FBstabDense::FBstabDense(int nz, int nl, int nv) {
   if (nz <= 0 || nv <= 0 || nl < 0) {
     throw std::runtime_error(
         "In FBstabDense::FBstabDense: nz and nv must be positive, nl "
         "nonnegative");
   }
-
   nz_ = nz;
   nl_ = nl;
   nv_ = nv;
@@ -58,14 +40,6 @@ FBstabDense::FBstabDense(int nz, int nl, int nv) {
   opts_ = DefaultOptions();
 }
 
-template <class InputVector>
-SolverOut FBstabDense::Solve(const ProblemData& qp, InputVector* x) {
-  // Data performs its own validation checks.
-  DenseData data(&qp.H, &qp.f, &qp.G, &qp.h, &qp.A, &qp.b);
-  ValidateInputs(data, *x);
-  return algorithm_->Solve(&data, &x->z, &x->l, &x->v, &x->y);
-}
-
 void FBstabDense::UpdateOptions(const Options& options) {
   // No need to validate since there are no additional options and the algorithm
   // will check the algorithmic ones.
@@ -84,23 +58,54 @@ FBstabDense::Options FBstabDense::ReliableOptions() {
   return opts;
 }
 
-template <class InputVector>
-void FBstabDense::ValidateInputs(const DenseData& data, const InputVector& x) {
-  if (nz_ != data.nz() || nv_ != data.nv() || nl_ != data.nl()) {
-    throw std::runtime_error(
-        "In FBstabDense::Solve: mismatch between *this and data dimensions.");
-  }
-  if (nz_ != x.z.size() || nv_ != x.v.size()) {
-    throw std::runtime_error(
-        "In FBstabDense::Solve: mismatch between *this and initial guess "
-        "dimensions.");
-  }
+FBstabDense::ProblemData::ProblemData(int nz, int nl, int nv) {
+  H.resize(nz, nz);
+  G.resize(nl, nz);
+  A.resize(nv, nz);
+  f.resize(nz);
+  h.resize(nl);
+  b.resize(nv);
+}
+
+FBstabDense::ProblemDataRef::ProblemDataRef(
+    const Eigen::Map<Eigen::MatrixXd>* H_,
+    const Eigen::Map<Eigen::VectorXd>* f_,
+    const Eigen::Map<Eigen::MatrixXd>* G_,
+    const Eigen::Map<Eigen::VectorXd>* h_,
+    const Eigen::Map<Eigen::MatrixXd>* A_,
+    const Eigen::Map<Eigen::VectorXd>* b_)
+    : H(H_->data(), H_->rows(), H_->cols()),
+      G(G_->data(), G_->rows(), G_->cols()),
+      A(A_->data(), A_->rows(), A_->cols()),
+      f(f_->data(), f_->size()),
+      h(h_->data(), h_->size()),
+      b(b_->data(), b_->size()) {}
+
+FBstabDense::Variable::Variable(int nz, int nl, int nv) {
+  z = Eigen::VectorXd::Zero(nz);
+  l = Eigen::VectorXd::Zero(nl);
+  v = Eigen::VectorXd::Zero(nv);
+  y = Eigen::VectorXd::Zero(nv);
+}
+
+FBstabDense::VariableRef::VariableRef(Eigen::Map<Eigen::VectorXd>* z_,
+                                      Eigen::Map<Eigen::VectorXd>* l_,
+                                      Eigen::Map<Eigen::VectorXd>* v_,
+                                      Eigen::Map<Eigen::VectorXd>* y_)
+    : z(z_->data(), z_->size()),
+      l(l_->data(), l_->size()),
+      v(v_->data(), v_->size()),
+      y(y_->data(), y_->size()) {}
+
+void FBstabDense::VariableRef::fill(double a) {
+  z.fill(a);
+  l.fill(a);
+  v.fill(a);
+  y.fill(a);
 }
 
 // Explicit instantiation.
-template SolverOut FBstabDense::Solve(const ProblemData& qp, Variable* x);
-template SolverOut FBstabDense::Solve(const ProblemData& qp, VariableRef* x);
-template class FBstabAlgorithm<FullVariable, FullResidual, DenseData,
-                               DenseCholeskySolver, FullFeasibility>;
+template class FBstabAlgorithm<FullVariable, FullResidual, DenseCholeskySolver,
+                               FullFeasibility>;
 
 }  // namespace fbstab

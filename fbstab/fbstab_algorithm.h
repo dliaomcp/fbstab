@@ -110,8 +110,7 @@ using clock = std::chrono::high_resolution_clock;
  * @tparam LinearSolver:  solves Newton step systems
  * @tparam Feasibility:   checks for primal-dual infeasibility
  */
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
 class FBstabAlgorithm {
  public:
   /**
@@ -138,8 +137,8 @@ class FBstabAlgorithm {
    *
    * @return Details on the solver output
    */
-  template <class InputVector>
-  SolverOut Solve(const Data* qp_data, InputVector* z0, InputVector* l0,
+  template <class ProblemData, class InputVector>
+  SolverOut Solve(const ProblemData& qp_data, InputVector* z0, InputVector* l0,
                   InputVector* v0, InputVector* y0);
 
   /**

@@ -16,10 +16,11 @@ namespace fbstab {
  *
  * where H is symmetric and positive semidefinite.
  */
-
 class DenseData : public Data {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(DenseData)
+  DenseData() = delete;
+
   /**
    * Stores the problem data and performs input validation.
    * This class assumes that the pointers to the data remain valid.
@@ -31,12 +32,46 @@ class DenseData : public Data {
    * @param[in] A Constraint matrix
    * @param[in] b Constraint vector
    *
-   * Throws a runtime exception if any of the inputs are null or if
-   * the sizes of the inputs are inconsistent.
+   * @tparam Matrix: Used to allow MatrixXd or Map<MatrixXd>
+   * @tparam Vector: Used to allow VectorXd or Map<VectorXd>
+   *
+   * The template parameters are explicitly instatiated at the end of the .cc
+   * file for MatrixXd/VectorXd and their mapped versions.
+   *
+   * Throws a runtime exception if any of the inputs are null or if the
+   * sizes of the inputs are inconsistent.
    */
-  DenseData(const Eigen::MatrixXd* H, const Eigen::VectorXd* f,
-            const Eigen::MatrixXd* G, const Eigen::VectorXd* h,
-            const Eigen::MatrixXd* A, const Eigen::VectorXd* b);
+  template <class Matrix, class Vector>
+  DenseData(const Matrix* H, const Vector* f, const Matrix* G, const Vector* h,
+            const Matrix* A, const Vector* b)
+      : H_(H->data(), H->rows(), H->cols()),
+        G_(G->data(), G->rows(), G->cols()),
+        A_(A->data(), A->rows(), A->cols()),
+        f_(f->data(), f->size()),
+        h_(h->data(), h->size()),
+        b_(b->data(), b->size()) {
+    if (H->rows() != H->cols() || H->rows() != f->size()) {
+      throw std::runtime_error(
+          "In DenseData::DenseData: H must be square and the same size as f");
+    }
+    if (A->cols() != H->rows() || A->rows() != b->size()) {
+      throw std::runtime_error(
+          "In DenseData::DenseData: Sizing of data defining Az <= b is "
+          "inconsistent.");
+    }
+    if (G->cols() != H->rows() || G->rows() != h->size()) {
+      throw std::runtime_error(
+          "In DenseData::DenseData: Sizing of Gz = h is "
+          "inconsistent.");
+    }
+
+    nz_ = f->size();
+    nl_ = h->size();
+    nv_ = b->size();
+
+    forcing_norm_ =
+        sqrt(b->squaredNorm() + f->squaredNorm() + h->squaredNorm());
+  }
 
   /** Performs the operation y <- a*H*x + b*y */
   void gemvH(const Eigen::VectorXd& x, double a, double b,
@@ -80,12 +115,12 @@ class DenseData : public Data {
 
   double forcing_norm_ = 0.0;
 
-  const Eigen::MatrixXd* H_ = nullptr;
-  const Eigen::VectorXd* f_ = nullptr;
-  const Eigen::MatrixXd* G_ = nullptr;
-  const Eigen::VectorXd* h_ = nullptr;
-  const Eigen::MatrixXd* A_ = nullptr;
-  const Eigen::VectorXd* b_ = nullptr;
+  const Eigen::Map<const Eigen::MatrixXd> H_;
+  const Eigen::Map<const Eigen::MatrixXd> G_;
+  const Eigen::Map<const Eigen::MatrixXd> A_;
+  const Eigen::Map<const Eigen::VectorXd> f_;
+  const Eigen::Map<const Eigen::VectorXd> h_;
+  const Eigen::Map<const Eigen::VectorXd> b_;
 
   friend class DenseCholeskySolver;
 };

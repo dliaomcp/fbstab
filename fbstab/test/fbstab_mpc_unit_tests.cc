@@ -34,7 +34,7 @@ GTEST_TEST(FBstabMpc, DoubleIntegrator) {
   VectorXd lopt(ocp.nl());
   VectorXd vopt(ocp.nv());
 
-  // These numbers were computed using MATLAB's quadprog command.
+  // Computed using MATLAB's quadprog command.
   zopt << -5.31028204670497e-14, 5.02854354118183e-13, 0.311688311338095,
       5.35637944798588e-13, 0.311688311339015, -0.0779220779990502,
       0.311688311339667, 0.233766233340057, -0.103896103779874;
@@ -63,7 +63,7 @@ GTEST_TEST(FBstabMpc, DoubleIntegratorLongHorizon) {
   // Get the problem data.
   OcpGenerator ocp;
   ocp.DoubleIntegrator(20);  // horizon length of 20
-  FBstabMpc::ProblemData data = ocp.GetFBstabInput();
+  FBstabMpc::ProblemDataRef data = ocp.GetFBstabInputRef();
 
   // Set up the initial guess.
   FBstabMpc::Variable x(ocp.ProblemSize());

@@ -5,70 +5,14 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "tools/matrix_sequence.h"
+
 namespace fbstab {
 
 using MatrixXd = Eigen::MatrixXd;
 using VectorXd = Eigen::VectorXd;
 using Map = Eigen::Map<Eigen::MatrixXd>;
 using ConstMap = Eigen::Map<const Eigen::MatrixXd>;
-
-MpcData::MpcData(const std::vector<Eigen::MatrixXd>* Q,
-                 const std::vector<Eigen::MatrixXd>* R,
-                 const std::vector<Eigen::MatrixXd>* S,
-                 const std::vector<Eigen::VectorXd>* q,
-                 const std::vector<Eigen::VectorXd>* r,
-                 const std::vector<Eigen::MatrixXd>* A,
-                 const std::vector<Eigen::MatrixXd>* B,
-                 const std::vector<Eigen::VectorXd>* c,
-                 const std::vector<Eigen::MatrixXd>* E,
-                 const std::vector<Eigen::MatrixXd>* L,
-                 const std::vector<Eigen::VectorXd>* d,
-                 const Eigen::VectorXd* x0) {
-  if (Q == nullptr || R == nullptr || S == nullptr || q == nullptr ||
-      r == nullptr || A == nullptr || B == nullptr || c == nullptr ||
-      E == nullptr || L == nullptr || d == nullptr || x0 == nullptr) {
-    throw std::runtime_error("A null poiner was passed to MpcData::MpcData.");
-  }
-
-  Q_ = Q;
-  R_ = R;
-  S_ = S;
-  q_ = q;
-  r_ = r;
-  A_ = A;
-  B_ = B;
-  c_ = c;
-  E_ = E;
-  L_ = L;
-  d_ = d;
-  x0_ = x0;
-
-  validate_length();
-  validate_size();
-
-  N_ = B_->size();
-  nx_ = B_->at(0).rows();
-  nu_ = B_->at(0).cols();
-  nc_ = E_->at(0).rows();
-
-  nz_ = (N_ + 1) * (nx_ + nu_);
-  nl_ = (N_ + 1) * nx_;
-  nv_ = (N_ + 1) * nc_;
-
-  // Compute the forcing norm = ||[f,h,b]||
-  forcing_norm_ = 0.0;
-  for (int i = 0; i < N_ + 1; i++) {
-    forcing_norm_ += q_->at(i).squaredNorm();
-    forcing_norm_ += r_->at(i).squaredNorm();
-    forcing_norm_ += d_->at(i).squaredNorm();
-    if (i == 0) {
-      forcing_norm_ += x0_->squaredNorm();
-    } else {
-      forcing_norm_ += c_->at(i - 1).squaredNorm();
-    }
-  }
-  forcing_norm_ = sqrt(forcing_norm_);
-}
 
 void MpcData::gemvH(const Eigen::VectorXd& x, double a, double b,
                     Eigen::VectorXd* y) const {
@@ -90,9 +34,9 @@ void MpcData::gemvH(const Eigen::VectorXd& x, double a, double b,
   ConstMap v(x.data(), nx_ + nu_,
              N_ + 1);  // v = reshape(x, [nx + nu, N + 1]);
   for (int i = 0; i < N_ + 1; i++) {
-    const MatrixXd& Q = Q_->at(i);
-    const MatrixXd& S = S_->at(i);
-    const MatrixXd& R = R_->at(i);
+    const auto& Q = Q_(i);
+    const auto& S = S_(i);
+    const auto& R = R_(i);
 
     // These variables alias w.
     auto yx = w.block(0, i, nx_, 1);
@@ -138,8 +82,8 @@ void MpcData::gemvA(const Eigen::VectorXd& x, double a, double b,
   Map w(y->data(), nc_, N_ + 1);
 
   for (int i = 0; i < N_ + 1; i++) {
-    const MatrixXd& E = E_->at(i);
-    const MatrixXd& L = L_->at(i);
+    const auto& E = E_(i);
+    const auto& L = L_(i);
 
     // This aliases w.
     auto yi = w.col(i);
@@ -180,8 +124,8 @@ void MpcData::gemvG(const Eigen::VectorXd& x, double a, double b,
   w.col(0).noalias() += -a * z.block(0, 0, nx_, 1);
 
   for (int i = 1; i < N_ + 1; i++) {
-    const MatrixXd& A = A_->at(i - 1);
-    const MatrixXd& B = B_->at(i - 1);
+    const auto& A = A_(i - 1);
+    const auto& B = B_(i - 1);
 
     // Alias for the output at stage i.
     auto yi = w.col(i);
@@ -225,8 +169,8 @@ void MpcData::gemvGT(const Eigen::VectorXd& x, double a, double b,
   Map w(y->data(), nx_ + nu_, N_ + 1);
 
   for (int i = 0; i < N_; i++) {
-    const MatrixXd& A = A_->at(i);
-    const MatrixXd& B = B_->at(i);
+    const auto& A = A_(i);
+    const auto& B = B_(i);
 
     // Aliases for the dual variables at stage i and i+1;
     const auto vi = v.col(i);
@@ -271,8 +215,8 @@ void MpcData::gemvAT(const Eigen::VectorXd& x, double a, double b,
   Map w(y->data(), nx_ + nu_, N_ + 1);
 
   for (int i = 0; i < N_ + 1; i++) {
-    const MatrixXd& E = E_->at(i);
-    const MatrixXd& L = L_->at(i);
+    const auto& E = E_(i);
+    const auto& L = L_(i);
 
     auto xi = w.block(0, i, nx_, 1);
     auto ui = w.block(nx_, i, nu_, 1);
@@ -308,8 +252,8 @@ void MpcData::axpyf(double a, Eigen::VectorXd* y) const {
     auto xi = w.block(0, i, nx_, 1);
     auto ui = w.block(nx_, i, nu_, 1);
 
-    xi.noalias() += a * q_->at(i);
-    ui.noalias() += a * r_->at(i);
+    xi.noalias() += a * q_(i);
+    ui.noalias() += a * r_(i);
   }
 }
 
@@ -322,10 +266,10 @@ void MpcData::axpyh(double a, Eigen::VectorXd* y) const {
   }
   // Create reshaped view of the input vector.
   Map w(y->data(), nx_, N_ + 1);
-  w.col(0) += -a * (*x0_);
+  w.col(0) += -a * x0_;
 
   for (int i = 1; i < N_ + 1; i++) {
-    w.col(i) += -a * c_->at(i - 1);
+    w.col(i) += -a * c_(i - 1);
   }
 }
 
@@ -340,100 +284,81 @@ void MpcData::axpyb(double a, Eigen::VectorXd* y) const {
   Map w(y->data(), nc_, N_ + 1);
 
   for (int i = 0; i < N_ + 1; i++) {
-    w.col(i).noalias() += -a * d_->at(i);
+    w.col(i).noalias() += -a * d_(i);
   }
 }
 
-void MpcData::validate_length() const {
+void MpcData::ValidateInputs() const {
   bool OK = true;
-
-  const auto N = Q_->size();
+  const int N = Q_.length();
   if (N <= 0) {
     throw std::runtime_error("Horizon length must be at least 1.");
   }
 
-  OK = OK && N == R_->size();
-  OK = OK && N == S_->size();
-  OK = OK && N == q_->size();
-  OK = OK && N == r_->size();
-  OK = OK && (N - 1) == A_->size();
-  OK = OK && (N - 1) == B_->size();
-  OK = OK && (N - 1) == c_->size();
-  OK = OK && N == E_->size();
-  OK = OK && N == L_->size();
-  OK = OK && N == d_->size();
-
+  OK = OK && N == R_.length();
+  OK = OK && N == S_.length();
+  OK = OK && N == q_.length();
+  OK = OK && N == r_.length();
+  OK = OK && (N - 1) == A_.length();
+  OK = OK && (N - 1) == B_.length();
+  OK = OK && (N - 1) == c_.length();
+  OK = OK && N == E_.length();
+  OK = OK && N == L_.length();
+  OK = OK && N == d_.length();
   if (!OK) {
     throw std::runtime_error(
         "Sequence length mismatch in input data to MpcData.");
   }
-}
 
-void MpcData::validate_size() const {
-  const int N = B_->size();
-
-  const int nx = Q_->at(0).rows();
-  if (x0_->size() != nx) {
-    throw std::runtime_error("Size mismatch in input data to MpcData.");
+  const int nx = Q_.rows();
+  if (x0_.size() != nx) {
+    throw std::runtime_error("Size mismatch in x0 input to MpcData.");
   }
-  for (int i = 0; i < N + 1; i++) {
-    if (Q_->at(i).rows() != nx || Q_->at(i).cols() != nx) {
-      throw std::runtime_error("Size mismatch in Q input to MpcData.");
-    }
-    if (S_->at(i).cols() != nx) {
-      throw std::runtime_error("Size mismatch in S input to MpcData.");
-    }
-    if (q_->at(i).size() != nx) {
-      throw std::runtime_error("Size mismatch in q input to MpcData.");
-    }
-    if (E_->at(i).cols() != nx) {
-      throw std::runtime_error("Size mismatch in E input to MpcData.");
-    }
+  if (Q_.cols() != nx) {
+    throw std::runtime_error("Size mismatch in Q input to MpcData.");
   }
-  for (int i = 0; i < N; i++) {
-    if (A_->at(i).rows() != nx || A_->at(i).cols() != nx) {
-      throw std::runtime_error("Size mismatch in A input to MpcData.");
-    }
-    if (B_->at(i).rows() != nx) {
-      throw std::runtime_error("Size mismatch in B input to MpcData.");
-    }
-    if (c_->at(i).size() != nx) {
-      throw std::runtime_error("Size mismatch in c input to MpcData.");
-    }
+  if (S_.cols() != nx) {
+    throw std::runtime_error("Size mismatch in S input to MpcData.");
+  }
+  if (q_.rows() != nx) {
+    throw std::runtime_error("Size mismatch in q input to MpcData.");
+  }
+  if (E_.cols() != nx) {
+    throw std::runtime_error("Size mismatch in E input to MpcData.");
+  }
+  if (A_.rows() != nx || A_.cols() != nx) {
+    throw std::runtime_error("Size mismatch in A input to MpcData.");
+  }
+  if (B_.rows() != nx) {
+    throw std::runtime_error("Size mismatch in B input to MpcData.");
+  }
+  if (c_.rows() != nx) {
+    throw std::runtime_error("Size mismatch in c input to MpcData.");
   }
 
-  const int nu = R_->at(0).rows();
-  for (int i = 0; i < N + 1; i++) {
-    if (R_->at(i).rows() != nu || R_->at(i).cols() != nu) {
-      throw std::runtime_error("Size mismatch in R input to MpcData.");
-    }
-    if (S_->at(i).rows() != nu) {
-      throw std::runtime_error("Size mismatch in S input to MpcData.");
-    }
-    if (r_->at(i).size() != nu) {
-      throw std::runtime_error("Size mismatch in r input to MpcData.");
-    }
-    if (L_->at(i).cols() != nu) {
-      throw std::runtime_error("Size mismatch in L input to MpcData.");
-    }
+  const int nu = R_.rows();
+  if (R_.cols() != nu) {
+    throw std::runtime_error("Size mismatch in R input to MpcData.");
   }
-  for (int i = 0; i < N; i++) {
-    if (B_->at(i).cols() != nu) {
-      throw std::runtime_error("Size mismatch in B input to MpcData.");
-    }
+  if (S_.rows() != nu) {
+    throw std::runtime_error("Size mismatch in S input to MpcData.");
+  }
+  if (r_.rows() != nu) {
+    throw std::runtime_error("Size mismatch in r input to MpcData.");
+  }
+  if (L_.cols() != nu) {
+    throw std::runtime_error("Size mismatch in L input to MpcData.");
+  }
+  if (B_.cols() != nu) {
+    throw std::runtime_error("Size mismatch in B input to MpcData.");
   }
 
-  const int nc = E_->at(0).rows();
-  for (int i = 0; i < N + 1; i++) {
-    if (E_->at(i).rows() != nc) {
-      throw std::runtime_error("Size mismatch in E input to MpcData.");
-    }
-    if (L_->at(i).rows() != nc) {
-      throw std::runtime_error("Size mismatch in L input to MpcData.");
-    }
-    if (d_->at(i).size() != nc) {
-      throw std::runtime_error("Size mismatch in d input to MpcData.");
-    }
+  const int nc = E_.rows();
+  if (L_.rows() != nc) {
+    throw std::runtime_error("Size mismatch in L input to MpcData.");
+  }
+  if (d_.rows() != nc) {
+    throw std::runtime_error("Size mismatch in d input to MpcData.");
   }
 }
 

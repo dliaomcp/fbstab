@@ -44,9 +44,9 @@ bool DenseCholeskySolver::Initialize(const FullVariable& x,
     throw std::runtime_error(
         "In DenseCholeskySolver::Factor: sigma must be positive.");
   }
-  const Eigen::MatrixXd& H = *(data_->H_);
-  const Eigen::MatrixXd& G = *(data_->G_);
-  const Eigen::MatrixXd& A = *(data_->A_);
+  const auto& H = data_->H_;
+  const auto& G = data_->G_;
+  const auto& A = data_->A_;
 
   // E = H + sigma I + A'*diag(Gamma(x))*A
   E_ = H + sigma * Eigen::MatrixXd::Identity(nz_, nz_);
@@ -92,8 +92,8 @@ bool DenseCholeskySolver::Solve(const FullResidual& r, FullVariable* x) const {
     throw std::runtime_error(
         "In DenseCholeskySolver::Factor: inputs must match object size.");
   }
-  const Eigen::MatrixXd& A = *(data_->A_);
-  const Eigen::VectorXd& b = *(data_->b_);
+  const auto& A = data_->A_;
+  const auto& b = data_->b_;
 
   // This method solves the system:
   // [E G'] [z] = [rz - A'*D^-1 * rv]

@@ -82,6 +82,7 @@ class Variable {
    * @param[in] data pointer to the problem data
    */
   virtual void LinkData(const Data* data) = 0;
+
   /**
    * Fills the variable with one value.
    * @param[in] a
@@ -153,6 +154,7 @@ class Residual {
    * @param[in] data pointer to the problem data
    */
   virtual void LinkData(const Data* data) = 0;
+
   /**
    * Fills storage with a.
    * @param[in] a

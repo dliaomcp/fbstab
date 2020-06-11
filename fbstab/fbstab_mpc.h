@@ -11,6 +11,7 @@
 #include "fbstab/components/riccati_linear_solver.h"
 #include "fbstab/fbstab_algorithm.h"
 #include "tools/copyable_macros.h"
+#include "tools/matrix_sequence.h"
 
 namespace fbstab {
 
@@ -56,26 +57,66 @@ class FBstabMpc {
  public:
   FBSTAB_NO_COPY_NO_MOVE_NO_ASSIGN(FBstabMpc)
   // Convenience typedef.
-  using FBstabAlgoMpc = FBstabAlgorithm<FullVariable, FullResidual, MpcData,
-                                        RiccatiLinearSolver, FullFeasibility>;
+  using Algorithm = FBstabAlgorithm<FullVariable, FullResidual,
+                                    RiccatiLinearSolver, FullFeasibility>;
   /**
-   * Structure to hold references to the problem data.
-   * See the class documentation or (29) in https://arxiv.org/pdf/1901.04046.pdf
-   * for more details.
+   * Structure to hold problem data.
+   * See the class documentation or (29) in
+   * https://arxiv.org/pdf/1901.04046.pdf for more details.
    */
   struct ProblemData {
-    std::vector<Eigen::MatrixXd> Q;  ///  N + 1 vector of nx x nx matrices
-    std::vector<Eigen::MatrixXd> R;  /// N + 1 vector of nu x nu matrices
-    std::vector<Eigen::MatrixXd> S;  /// N + 1 vector of nu x nx matrices
-    std::vector<Eigen::VectorXd> q;  /// N + 1 vector of nx x 1 vectors
-    std::vector<Eigen::VectorXd> r;  /// N + 1 vector of nu x 1 vectors
-    std::vector<Eigen::MatrixXd> A;  /// N vector of nx x nx matrices
-    std::vector<Eigen::MatrixXd> B;  /// N  vector of nx x nu matrices
-    std::vector<Eigen::VectorXd> c;  /// N vector of nx vectors
-    std::vector<Eigen::MatrixXd> E;  /// N + 1 vector of nc x nx matrices
-    std::vector<Eigen::MatrixXd> L;  /// N + 1 vector of nc x nu matrices
-    std::vector<Eigen::VectorXd> d;  /// N + 1 vector of nc x 1 vectors
-    Eigen::VectorXd x0;              /// nx x 1 vector
+    ProblemData() = default;
+    MatrixSequence Q;    /// N + 1 sequence of nx x nx matrices
+    MatrixSequence R;    /// N + 1 sequence of nu x nu matrices
+    MatrixSequence S;    /// N + 1 sequence of nu x nx matrices
+    MatrixSequence q;    /// N + 1 sequence of nx x 1  matrices
+    MatrixSequence r;    /// N + 1 sequence of nu x 1  matrices
+    MatrixSequence A;    /// N     sequence of nx x nx matrices
+    MatrixSequence B;    /// N     sequence of nx x nu matrices
+    MatrixSequence c;    /// N     sequence of nx x 1  matrices
+    MatrixSequence E;    /// N + 1 sequence of nc x nx matrices
+    MatrixSequence L;    /// N + 1 sequence of nc x nu matrices
+    MatrixSequence d;    /// N + 1 sequence of nc x 1  matrices
+    Eigen::VectorXd x0;  /// nx x 1 vector
+  };
+
+  /**
+   * Structure to hold references to the problem data.
+   * This struct assumes that all references remain valid.
+   *
+   * See the class documentation or (29) in
+   * https://arxiv.org/pdf/1901.04046.pdf for more details.
+   */
+  struct ProblemDataRef {
+    /** Creates an uninitialized object. */
+    ProblemDataRef() : x0(nullptr, 0) {}
+
+    /** Set x0 using a compatible Eigen object. */
+    template <class Vector>
+    void SetX0(const Vector& x0_) {
+      new (&x0) Eigen::Map<const Eigen::VectorXd>(x0_.data(), x0_.size());
+    }
+
+    /** Create a reference to existing objects. */
+    ProblemDataRef(const MatrixSequence* Q_, const MatrixSequence* R_,
+                   const MatrixSequence* S_, const MatrixSequence* q_,
+                   const MatrixSequence* r_, const MatrixSequence* A_,
+                   const MatrixSequence* B_, const MatrixSequence* c_,
+                   const MatrixSequence* E_, const MatrixSequence* L_,
+                   const MatrixSequence* d_, const Eigen::VectorXd* x0_);
+
+    MapMatrixSequence Q;  /// N + 1 sequence of nx x nx matrices
+    MapMatrixSequence R;  /// N + 1 sequence of nu x nu matrices
+    MapMatrixSequence S;  /// N + 1 sequence of nu x nx matrices
+    MapMatrixSequence q;  /// N + 1 sequence of nx x 1  matrices
+    MapMatrixSequence r;  /// N + 1 sequence of nu x 1  matrices
+    MapMatrixSequence A;  /// N     sequence of nx x nx matrices
+    MapMatrixSequence B;  /// N     sequence of nx x nu matrices
+    MapMatrixSequence c;  /// N     sequence of nx x 1  matrices
+    MapMatrixSequence E;  /// N + 1 sequence of nc x nx matrices
+    MapMatrixSequence L;  /// N + 1 sequence of nc x nu matrices
+    MapMatrixSequence d;  /// N + 1 sequence of nc x 1  matrices
+    Eigen::Map<const Eigen::VectorXd> x0;  /// nx x 1 vector
   };
 
   /**
@@ -84,35 +125,28 @@ class FBstabMpc {
    */
   struct Variable {
     // Initialize variables to 0 for a given problem size.
-    Variable(int N, int nx, int nu, int nc) { initialize(N, nx, nu, nc); }
+    Variable(int N, int nx, int nu, int nc);
     // Initialization in vector form, s = (N, nx, nu, nc)
-    Variable(const Eigen::Vector4d& s) { initialize(s(0), s(1), s(2), s(3)); }
+    Variable(const Eigen::Vector4d& s);
 
     Eigen::VectorXd z;  /// Decision variables in \reals^nz
     Eigen::VectorXd l;  /// Equality duals/costates in \reals^nl
     Eigen::VectorXd v;  /// Inequality duals in \reals^nv
     Eigen::VectorXd y;  /// Constraint margin, i.e., y = b-Az, in \reals^nv
-
-   private:
-    void initialize(int N, int nx, int nu, int nc);
   };
 
+  /** A structure to store the solution using existing memory. */
   struct VariableRef {
-    // Initialization using raw pointers.
-    VariableRef(int nz, int nl, int nv, double* z_, double* l_, double* v_,
-                double* y_);
-
-    // Initialization using Eigen::Maps.
-    using Map = Eigen::Map<Eigen::VectorXd>;
-    VariableRef(Map z_, Map l_, Map v_, Map y_);
+    VariableRef(Eigen::Map<Eigen::VectorXd> z_, Eigen::Map<Eigen::VectorXd> l_,
+                Eigen::Map<Eigen::VectorXd> v_, Eigen::Map<Eigen::VectorXd> y_);
 
     // Fill all fields with a.
     void fill(double a);
 
-    Map z;  /// Decision variables in \reals^nz.
-    Map l;  /// Equality duals
-    Map v;  /// Inequality duals in \reals^nv.
-    Map y;  /// Constraint margin, i.e., y = b-Az, in \reals^nv.
+    Eigen::Map<Eigen::VectorXd> z;  /// Decision variables in R^nz.
+    Eigen::Map<Eigen::VectorXd> l;  /// Equality duals in R^nl
+    Eigen::Map<Eigen::VectorXd> v;  /// Inequality duals in R^nv.
+    Eigen::Map<Eigen::VectorXd> y;  /// Constraint margin y = b-Az, in R^nv.
   };
 
   /** A Structure to hold options */
@@ -138,15 +172,19 @@ class FBstabMpc {
    *
    * @param[in]     qp problem data
    * @param[in,out] x  initial guess, overwritten with the solution
-   * @param[in]     use_initial_guess if false the solver is initialized at the
-   * origin
    * @return       Summary of the optimizer output, see fbstab_algorithm.h.
    *
-   * The template parameter allows for both Variable and VariableRef type
-   * inputs.
+   * @tparam InputData allows for ProblemData and ProblemDataRef
+   * @tparam InputVariable allows for Variable and VariableRef
    */
-  template <class InputVector>
-  SolverOut Solve(const ProblemData& qp, InputVector* x);
+  template <class InputData, class InputVariable>
+  SolverOut Solve(const InputData& qp, InputVariable* x) {
+    // The data object performs its own validation checks.
+    MpcData data(&qp.Q, &qp.R, &qp.S, &qp.q, &qp.r, &qp.A, &qp.B, &qp.c, &qp.E,
+                 &qp.L, &qp.d, &qp.x0);
+    ValidateInputSizes(data, *x);
+    return algorithm_->Solve(data, &x->z, &x->l, &x->v, &x->y);
+  }
 
   /**
    * Allows for setting of solver options. See fbstab_algorithm.h for
@@ -161,9 +199,6 @@ class FBstabMpc {
   static Options ReliableOptions();
 
  private:
-  template <class InputVector>
-  void ValidateInputSizes(const MpcData& data, const InputVector& x);
-
   int N_ = 0;   // horizon length
   int nx_ = 0;  // number of states
   int nu_ = 0;  // number of controls
@@ -173,7 +208,7 @@ class FBstabMpc {
   int nv_ = 0;  // number of inequality duals
   Options opts_;
 
-  std::unique_ptr<FBstabAlgoMpc> algorithm_;
+  std::unique_ptr<Algorithm> algorithm_;
   std::unique_ptr<FullVariable> x1_;
   std::unique_ptr<FullVariable> x2_;
   std::unique_ptr<FullVariable> x3_;
@@ -182,6 +217,21 @@ class FBstabMpc {
   std::unique_ptr<FullResidual> r2_;
   std::unique_ptr<RiccatiLinearSolver> linear_solver_;
   std::unique_ptr<FullFeasibility> feasibility_checker_;
+
+  template <class InputVariable>
+  void ValidateInputSizes(const MpcData& data, const InputVariable& x) {
+    if (data.N() != N_ || data.nx() != nx_ || data.nu() != nu_ ||
+        data.nc() != nc_) {
+      throw std::runtime_error(
+          "In FBstabMpc::Solve: mismatch between *this and data dimensions.");
+    }
+    if (x.z.size() != nz_ || x.l.size() != nl_ || x.v.size() != nv_ ||
+        x.y.size() != nv_) {
+      throw std::runtime_error(
+          "In FBstabMpc::Solve: mismatch between *this and initial guess "
+          "dimensions.");
+    }
+  }
 };
 
 }  // namespace fbstab

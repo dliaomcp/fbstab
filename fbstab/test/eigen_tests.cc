@@ -58,5 +58,24 @@ GTEST_TEST(A, C) {
   std::cout << d << std::endl;
 }
 
+GTEST_TEST(A, D) {
+  int nr = 4;
+  int nc = 1;
+
+  MatrixXd H(nr, nc);
+  H << 1, 2, 3, 4;
+
+  Eigen::Map<Eigen::MatrixXd> A(H.data(), nr, nc);
+
+  Eigen::VectorXd a = A;
+
+  std::cout << A << std::endl;
+  std::cout << a << std::endl;
+
+  const auto& AA = A;
+
+  std::cout << AA << std::endl;
+}
+
 }  // namespace test
 }  // namespace fbstab

@@ -97,16 +97,17 @@ bool RiccatiLinearSolver::Initialize(const FullVariable& x,
     mus_(i) = temp(1) + sigma * temp(0);
     Gamma_(i) = gamma_(i) / mus_(i);
   }
+
   // Compute the barrier augmented Hessian.
   for (int i = 0; i < N_ + 1; i++) {
-    const MatrixXd& Ei = (*data_->E_)[i];
-    const MatrixXd& Li = (*data_->L_)[i];
+    const auto& Ei = data_->E_(i);
+    const auto& Li = data_->L_(i);
 
     Q_[i].triangularView<Eigen::Lower>() =
-        (*data_->Q_)[i] + sigma * MatrixXd::Identity(nx_, nx_);
+        data_->Q_(i) + sigma * MatrixXd::Identity(nx_, nx_);
     R_[i].triangularView<Eigen::Lower>() =
-        (*data_->R_)[i] + sigma * MatrixXd::Identity(nu_, nu_);
-    S_[i] = (*data_->S_)[i];
+        data_->R_(i) + sigma * MatrixXd::Identity(nu_, nu_);
+    S_[i] = data_->S_(i);
 
     // Add barriers associated with E(i)x(i) + L(i)u(i) + d(i) <=0
     // Q(i) += E(i)'*diag(Gamma(i))*E(i)
@@ -146,7 +147,7 @@ bool RiccatiLinearSolver::Initialize(const FullVariable& x,
     FBSTAB_LLT_CHECK(llt1);
 
     // Compute AM = A*inv(M)'.
-    AM_[i] = (*data_->A_)[i];
+    AM_[i] = data_->A_(i);
     M_[i]
         .triangularView<Eigen::Lower>()
         .transpose()
@@ -167,7 +168,7 @@ bool RiccatiLinearSolver::Initialize(const FullVariable& x,
     // Compute P = (A*inv(QQ)S' - B)*inv(SG)',
     //           = (AM*SM' - B)*inv(SG)'.
     P_[i].noalias() = AM_[i] * SM_[i].transpose();
-    P_[i] -= (*data_->B_)[i];
+    P_[i] -= data_->B_(i);
     SG_[i]
         .triangularView<Eigen::Lower>()
         .transpose()

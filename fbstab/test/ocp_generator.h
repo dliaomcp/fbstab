@@ -5,6 +5,7 @@
 
 #include "fbstab/fbstab_mpc.h"
 #include "tools/copyable_macros.h"
+#include "tools/matrix_sequence.h"
 
 namespace fbstab {
 namespace test {
@@ -46,6 +47,15 @@ class OcpGenerator {
    * called first.
    */
   FBstabMpc::ProblemData GetFBstabInput() const;
+
+  /**
+   * Returns a reference to problem data in the form accepted by FBstab.
+   * @return problem data
+   *
+   * Throws a runtime_error if one of the problem creator methods hasn't been
+   * called first.
+   */
+  FBstabMpc::ProblemDataRef GetFBstabInputRef() const;
 
   /**
    * Returns the data needed to simulate the linear time invariant systems
@@ -155,19 +165,19 @@ class OcpGenerator {
                        const Eigen::VectorXd& d, const Eigen::VectorXd& x0,
                        int N);
 
-  std::vector<Eigen::MatrixXd> Q_;
-  std::vector<Eigen::MatrixXd> R_;
-  std::vector<Eigen::MatrixXd> S_;
-  std::vector<Eigen::VectorXd> q_;
-  std::vector<Eigen::VectorXd> r_;
+  MatrixSequence Q_;
+  MatrixSequence R_;
+  MatrixSequence S_;
+  MatrixSequence q_;
+  MatrixSequence r_;
 
-  std::vector<Eigen::MatrixXd> A_;
-  std::vector<Eigen::MatrixXd> B_;
-  std::vector<Eigen::VectorXd> c_;
+  MatrixSequence A_;
+  MatrixSequence B_;
+  MatrixSequence c_;
 
-  std::vector<Eigen::MatrixXd> E_;
-  std::vector<Eigen::MatrixXd> L_;
-  std::vector<Eigen::VectorXd> d_;
+  MatrixSequence E_;
+  MatrixSequence L_;
+  MatrixSequence d_;
 
   Eigen::VectorXd x0_;
 

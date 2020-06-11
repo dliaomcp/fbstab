@@ -74,14 +74,10 @@ inline void AlgorithmParameters::ReliableParameters() {
 }
 
 // Constructor implementation *************************************
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
-                Feasibility>::FBstabAlgorithm(Variable* x1, Variable* x2,
-                                              Variable* x3, Variable* x4,
-                                              Residual* r1, Residual* r2,
-                                              LinearSolver* lin_sol,
-                                              Feasibility* fcheck) {
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::FBstabAlgorithm(
+    Variable* x1, Variable* x2, Variable* x3, Variable* x4, Residual* r1,
+    Residual* r2, LinearSolver* lin_sol, Feasibility* fcheck) {
   if (x1 == nullptr || x2 == nullptr || x3 == nullptr || x4 == nullptr) {
     throw std::runtime_error("A Variable supplied to FBstabAlgorithm is null.");
   }
@@ -112,14 +108,11 @@ FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
 }
 
 // Solve implementation *************************************
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-template <class InputVector>
-SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
-                          Feasibility>::Solve(const Data* qp_data,
-                                              InputVector* z0, InputVector* l0,
-                                              InputVector* v0,
-                                              InputVector* y0) {
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+template <class ProblemData, class InputVector>
+SolverOut FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::Solve(
+    const ProblemData& qp_data, InputVector* z0, InputVector* l0,
+    InputVector* v0, InputVector* y0) {
   const time_point start_time{clock::now() /* dummy */};
 
   // Make sure the linear solver and residuals objects are using the same value
@@ -129,19 +122,19 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   linear_solver_->SetAlpha(opts_.alpha);
 
   // Supply a pointer to the data object.
-  xk_->LinkData(qp_data);
-  xi_->LinkData(qp_data);
-  dx_->LinkData(qp_data);
-  xp_->LinkData(qp_data);
+  xk_->LinkData(&qp_data);
+  xi_->LinkData(&qp_data);
+  dx_->LinkData(&qp_data);
+  xp_->LinkData(&qp_data);
 
-  rk_->LinkData(qp_data);
-  ri_->LinkData(qp_data);
-  feasibility_->LinkData(qp_data);
-  linear_solver_->LinkData(qp_data);
+  rk_->LinkData(&qp_data);
+  ri_->LinkData(&qp_data);
+  feasibility_->LinkData(&qp_data);
+  linear_solver_->LinkData(&qp_data);
 
   // Initialization phase.
   const double sigma = opts_.sigma0;
-  combo_tol_ = opts_.abs_tol + opts_.rel_tol * (1.0 + qp_data->ForcingNorm());
+  combo_tol_ = opts_.abs_tol + opts_.rel_tol * (1.0 + qp_data.ForcingNorm());
 
   // Copy the initial guess into xk
   CopyIntoVariable(*z0, *l0, *v0, *y0, xk_);
@@ -230,9 +223,8 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
 }
 
 // Subproblem solver implementation *************************************
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-double FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+double FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::
     SolveProximalSubproblem(Variable* x, Variable* xbar, double tol,
                             double sigma, double current_outer_residual) {
   merit_buffer_.fill(0.0);  // Clear the buffer of past merit function values.
@@ -309,9 +301,8 @@ double FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
 }
 
 // Helper functions *************************************
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+void FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::
     UpdateParameters(const AlgorithmParameters* const options) {
   opts_.sigma0 = options->sigma0;
   opts_.sigma_min = options->sigma_min;
@@ -337,10 +328,9 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
   opts_.ValidateOptions();
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
 template <class InputVector>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::CopyIntoVariable(const InputVector& z,
                                                     const InputVector& l,
                                                     const InputVector& v,
@@ -353,10 +343,9 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   x->InitializeConstraintMargin();
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
 template <class InputVector>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::WriteVariable(const Variable& x,
                                                  InputVector* z, InputVector* l,
                                                  InputVector* v,
@@ -367,12 +356,11 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   *y = x.y();
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
-    PrepareOutput(ExitFlag e, int prox_iters, int newton_iters,
-                  const Residual& r, time_point start,
-                  double initial_residual) const {
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+SolverOut
+FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::PrepareOutput(
+    ExitFlag e, int prox_iters, int newton_iters, const Residual& r,
+    time_point start, double initial_residual) const {
   struct SolverOut output;
 
   time_point now = clock::now();
@@ -390,10 +378,9 @@ SolverOut FBstabAlgorithm<Variable, Residual, Data, LinearSolver, Feasibility>::
   return output;
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
 ExitFlag
-FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+FBstabAlgorithm<Variable, Residual, LinearSolver,
                 Feasibility>::CheckForInfeasibility(const Variable& x) {
   typename Feasibility::FeasibilityStatus feas =
       feasibility_->CheckFeasibility(x, opts_.infeas_tol);
@@ -408,9 +395,8 @@ FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   }
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::InsertMerit(double x) {
   for (int i = static_cast<int>(merit_buffer_.size()) - 1; i > 0; i--) {
     merit_buffer_.at(i) = merit_buffer_.at(i - 1);
@@ -418,9 +404,8 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   merit_buffer_.at(0) = x;
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::PrintIterLine(int prox_iters,
                                                  int newton_iters,
                                                  const Residual& rk,
@@ -433,9 +418,8 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   }
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::PrintIterHeader() const {
   if (opts_.display_level == Display::ITER) {
     printf("%12s  %12s  %12s  %12s  %12s  %12s  %12s\n", "prox iter",
@@ -443,9 +427,8 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   }
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::PrintDetailedHeader(int prox_iters,
                                                        int newton_iters,
                                                        const Residual& r)
@@ -459,9 +442,8 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   }
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::PrintDetailedLine(int iter,
                                                      double step_length,
                                                      const Residual& r) const {
@@ -471,9 +453,8 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   }
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::PrintDetailedFooter(double tol,
                                                        const Residual& r)
     const {
@@ -485,12 +466,10 @@ void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
   }
 }
 
-template <class Variable, class Residual, class Data, class LinearSolver,
-          class Feasibility>
-void FBstabAlgorithm<Variable, Residual, Data, LinearSolver,
-                     Feasibility>::PrintFinal(int prox_iters, int newton_iters,
-                                              ExitFlag eflag, const Residual& r,
-                                              double t) const {
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+void FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::PrintFinal(
+    int prox_iters, int newton_iters, ExitFlag eflag, const Residual& r,
+    double t) const {
   if (opts_.display_level >= Display::FINAL) {
     printf("\nOptimization completed!  Exit code:");
     switch (eflag) {
