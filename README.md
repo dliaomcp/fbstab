@@ -2,22 +2,22 @@
 This repository contains an C++ implementation of FBstab: The proximally regularized Fischer-Burmeister method for convex quadratic programming. FBstab solves quadratic programs of the form,
 
 ```
-min.  0.5 z'Hz + f'z
-s.t.      Gz = h
+min.  1/2 z'Hz + f'z
+s.t.      Gz  = h
           Az <= b
 ```
 
 and its dual
 
 ```
-min.  0.5 u'Hu + b'l + h'v
-s.t.  Hu + f + G'l + A'v = 0
-      v >= 0.
+min.  1/2 z'Hz + b'l + h'v
+s.t.      Hz + f + G'l + A'v = 0
+          v >= 0.
 ```
 
 It assumes that H is positive semidefinite and can detect primal and/or dual infeasibility. FBstab requires no regularity assumptions on the G or A matrices. A mathematical description of FBstab can be found in the following [research article](https://arxiv.org/pdf/1901.04046.pdf).
 
-FBstab was originally designed for solving Model Predictive Control (MPC) problems, it can exploit sparsity and be easily warmstarted. However, the algorithm is applicable to general QPs and the core algorithm is written so as to be easily extensible. We currently provide specializations to dense inequality constrained QPs and linear-quadratic optimal control problems, i.e., MPC problems, and are in the process of writing a version for general sparse QPs. FBstab uses [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) for both backend linear algebra calculations and its interface. We currently provide two versions of FBstab:
+FBstab was originally designed for solving Model Predictive Control (MPC) problems, it can exploit sparsity and be easily warmstarted. However, the algorithm is applicable to general QPs and the core algorithm is written so as to be easily extensible. We currently provide specializations to dense QPs and linear-quadratic optimal control problems, i.e., MPC problems, and are in the process of writing a version for general sparse QPs. FBstab uses [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page) for both backend linear algebra calculations and its interface. We currently provide two versions of FBstab:
 
 `FBstabMpc` solves linear-quadratic optimal control problems of the following form:
 
@@ -36,11 +36,12 @@ Where
 is positive semidefinite for all i \in [0,N].
 ```
 
-`FBstabDense` solves dense inequality constrained QPs of the following form:
+`FBstabDense` solves dense QPs of the following form:
 
 ```
 min.    1/2  z'Hz + f'z
-s.t.         Az <= b
+s.t.         Gz  = h
+             Az <= b
 ```
 
 A third version 'FBstabSparse' is currently being developed.
