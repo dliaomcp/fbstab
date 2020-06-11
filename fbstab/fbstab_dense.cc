@@ -10,6 +10,7 @@
 #include "fbstab/components/full_residual.h"
 #include "fbstab/components/full_variable.h"
 #include "fbstab/fbstab_algorithm.h"
+#include "tools/output_stream.h"
 #include "tools/utilities.h"
 
 namespace fbstab {

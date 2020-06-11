@@ -137,18 +137,15 @@ class FBstabAlgorithm {
    *
    * @return Details on the solver output
    */
-  template <class ProblemData, class InputVector>
+  template <class ProblemData, class InputVector, class OutputStream>
   SolverOut Solve(const ProblemData& qp_data, InputVector* z0, InputVector* l0,
-                  InputVector* v0, InputVector* y0);
+                  InputVector* v0, InputVector* y0, const OutputStream& os);
 
   /**
    * Allows setting of algorithm options.
    * @param[in] option New options
    */
   void UpdateParameters(const AlgorithmParameters* const options);
-
-  // TODO(dliaomcp@umich.edu): Enable printing to a log file rather than just
-  // stdout
 
   /** Returns current parameters */
   AlgorithmParameters CurrentParameters() const { return opts_; }
@@ -196,8 +193,10 @@ class FBstabAlgorithm {
    *
    * This method uses the member variables rk_, ri_, dx_, and xp_ as workspaces.
    */
+  template <class OutputStream>
   double SolveProximalSubproblem(Variable* x, Variable* xbar, double tol,
-                                 double sigma, double current_outer_residual);
+                                 double sigma, double current_outer_residual,
+                                 const OutputStream& os);
 
   /*
    * Prepares a suitable output structure.
@@ -208,9 +207,11 @@ class FBstabAlgorithm {
    * @param[in] r
    * @param[in] start time instant when the solve call started
    */
+  template <class OutputStream>
   SolverOut PrepareOutput(ExitFlag e, int prox_iters, int newton_iters,
                           const Residual& r, time_point start,
-                          double initial_residual) const;
+                          double initial_residual,
+                          const OutputStream& os) const;
 
   // Reads an initial guess into a variable.
   template <class InputVector>
@@ -243,26 +244,35 @@ class FBstabAlgorithm {
   }
 
   // Prints a header line to stdout depending on display settings.
-  void PrintIterHeader() const;
+  template <class OutputStream>
+  void PrintIterHeader(const OutputStream& os) const;
 
   // Prints an iteration progress line to stdout depending on display settings.
+  template <class OutputStream>
   void PrintIterLine(int prox_iters, int newton_iters, const Residual& rk,
-                     const Residual& ri, double itol) const;
+                     const Residual& ri, double itol,
+                     const OutputStream& os) const;
 
   // Prints a detailed header line to stdout depending on display settings.
-  void PrintDetailedHeader(int prox_iters, int newton_iters,
-                           const Residual& r) const;
+  template <class OutputStream>
+  void PrintDetailedHeader(int prox_iters, int newton_iters, const Residual& r,
+                           const OutputStream& os) const;
 
   // Prints inner loop iterations details to stdout depending on display
   // settings.
-  void PrintDetailedLine(int iter, double step_length, const Residual& r) const;
+  template <class OutputStream>
+  void PrintDetailedLine(int iter, double step_length, const Residual& r,
+                         const OutputStream& os) const;
 
   // Prints a footer to stdout depending on display settings.
-  void PrintDetailedFooter(double tol, const Residual& r) const;
+  template <class OutputStream>
+  void PrintDetailedFooter(double tol, const Residual& r,
+                           const OutputStream& os) const;
 
   // Prints a summary to stdout depending on display settings.
+  template <class OutputStream>
   void PrintFinal(int prox_iters, int newton_iters, ExitFlag eflag,
-                  const Residual& r, double t) const;
+                  const Residual& r, double t, const OutputStream& os) const;
 };
 
 #include "fbstab/fbstab_algorithm-impl.h"

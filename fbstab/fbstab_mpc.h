@@ -2,7 +2,6 @@
 
 #include <Eigen/Dense>
 #include <memory>
-#include <vector>
 
 #include "fbstab/components/full_feasibility.h"
 #include "fbstab/components/full_residual.h"
@@ -12,6 +11,7 @@
 #include "fbstab/fbstab_algorithm.h"
 #include "tools/copyable_macros.h"
 #include "tools/matrix_sequence.h"
+#include "tools/output_stream.h"
 
 namespace fbstab {
 
@@ -174,16 +174,24 @@ class FBstabMpc {
    * @param[in,out] x  initial guess, overwritten with the solution
    * @return       Summary of the optimizer output, see fbstab_algorithm.h.
    *
-   * @tparam InputData allows for ProblemData and ProblemDataRef
-   * @tparam InputVariable allows for Variable and VariableRef
+   * @tparam InputData      ProblemData or ProblemDataRef
+   * @tparam InputVariable  Variable or VariableRef
+   * @tparam OutStream      Allows various printing classes
    */
-  template <class InputData, class InputVariable>
-  SolverOut Solve(const InputData& qp, InputVariable* x) {
+  template <class InputData, class InputVariable, class OutStream>
+  SolverOut Solve(const InputData& qp, InputVariable* x, const OutStream& os) {
     // The data object performs its own validation checks.
     MpcData data(&qp.Q, &qp.R, &qp.S, &qp.q, &qp.r, &qp.A, &qp.B, &qp.c, &qp.E,
                  &qp.L, &qp.d, &qp.x0);
     ValidateInputSizes(data, *x);
-    return algorithm_->Solve(data, &x->z, &x->l, &x->v, &x->y);
+    return algorithm_->Solve(data, &x->z, &x->l, &x->v, &x->y, os);
+  }
+
+  /** Uses a default printer */
+  template <class InputData, class InputVariable>
+  SolverOut Solve(const InputData& qp, InputVariable* x) {
+    StandardOutput os;
+    return Solve(qp, x, os);
   }
 
   /**

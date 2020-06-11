@@ -109,10 +109,10 @@ FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::FBstabAlgorithm(
 
 // Solve implementation *************************************
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
-template <class ProblemData, class InputVector>
+template <class ProblemData, class InputVector, class OutputStream>
 SolverOut FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::Solve(
     const ProblemData& qp_data, InputVector* z0, InputVector* l0,
-    InputVector* v0, InputVector* y0) {
+    InputVector* v0, InputVector* y0, const OutputStream& os) {
   const time_point start_time{clock::now() /* dummy */};
 
   // Make sure the linear solver and residuals objects are using the same value
@@ -152,7 +152,7 @@ SolverOut FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::Solve(
   newton_iters_ = 0;
   prox_iters_ = 0;
 
-  PrintIterHeader();
+  PrintIterHeader(os);
 
   // Main proximal loop.
   for (int k = 0; k < opts_.max_prox_iters; k++) {
@@ -162,14 +162,14 @@ SolverOut FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::Solve(
     rk_->PenalizedNaturalResidual(*xk_);
     Ek = rk_->Norm();
     if (Ek <= combo_tol_ || dx_->Norm() <= opts_.stall_tol) {
-      PrintIterLine(prox_iters_, newton_iters_, *rk_, *ri_, inner_tol);
+      PrintIterLine(prox_iters_, newton_iters_, *rk_, *ri_, inner_tol, os);
       SolverOut output = PrepareOutput(ExitFlag::SUCCESS, prox_iters_,
-                                       newton_iters_, *rk_, start_time, E0);
+                                       newton_iters_, *rk_, start_time, E0, os);
       WriteVariable(*xk_, z0, l0, v0, y0);
       return output;
     } else {
-      PrintDetailedHeader(prox_iters_, newton_iters_, *rk_);
-      PrintIterLine(prox_iters_, newton_iters_, *rk_, *ri_, inner_tol);
+      PrintDetailedHeader(prox_iters_, newton_iters_, *rk_, os);
+      PrintIterLine(prox_iters_, newton_iters_, *rk_, *ri_, inner_tol, os);
     }
 
     // TODO(dliaomcp@umich.edu) Check if the residual is decreasing.
@@ -181,7 +181,8 @@ SolverOut FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::Solve(
 
     // Solve the proximal subproblem.
     xi_->Copy(*xk_);
-    const double Eo = SolveProximalSubproblem(xi_, xk_, inner_tol, sigma, Ek);
+    const double Eo =
+        SolveProximalSubproblem(xi_, xk_, inner_tol, sigma, Ek, os);
 
     // Iteration timeout check.
     if (newton_iters_ >= opts_.max_newton_iters) {
@@ -193,7 +194,7 @@ SolverOut FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::Solve(
         rk_->PenalizedNaturalResidual(*xk_);
       }
       SolverOut output = PrepareOutput(ExitFlag::MAXITERATIONS, prox_iters_,
-                                       newton_iters_, *rk_, start_time, E0);
+                                       newton_iters_, *rk_, start_time, E0, os);
       return output;
     }
 
@@ -204,7 +205,7 @@ SolverOut FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::Solve(
       ExitFlag eflag = CheckForInfeasibility(*dx_);
       if (eflag != ExitFlag::SUCCESS) {
         SolverOut output = PrepareOutput(eflag, prox_iters_, newton_iters_,
-                                         *rk_, start_time, E0);
+                                         *rk_, start_time, E0, os);
         WriteVariable(*dx_, z0, l0, v0, y0);
         return output;
       }
@@ -217,16 +218,18 @@ SolverOut FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::Solve(
 
   // Timeout exit.
   SolverOut output = PrepareOutput(ExitFlag::MAXITERATIONS, prox_iters_,
-                                   newton_iters_, *rk_, start_time, E0);
+                                   newton_iters_, *rk_, start_time, E0, os);
   WriteVariable(*xk_, z0, l0, v0, y0);
   return output;
 }
 
 // Subproblem solver implementation *************************************
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
+template <class OutputStream>
 double FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::
     SolveProximalSubproblem(Variable* x, Variable* xbar, double tol,
-                            double sigma, double current_outer_residual) {
+                            double sigma, double current_outer_residual,
+                            const OutputStream& os) {
   merit_buffer_.fill(0.0);  // Clear the buffer of past merit function values.
 
   double Eo = 0;   // KKT residual.
@@ -246,11 +249,11 @@ double FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::
     // (this can happen if the problem is infeasible).
     if ((Ei <= tol && Eo < current_outer_residual) ||
         (Ei <= opts_.inner_tol_min)) {
-      PrintDetailedLine(i, t, *ri_);
-      PrintDetailedFooter(tol, *ri_);
+      PrintDetailedLine(i, t, *ri_, os);
+      PrintDetailedFooter(tol, *ri_, os);
       break;
     } else {
-      PrintDetailedLine(i, t, *ri_);
+      PrintDetailedLine(i, t, *ri_, os);
     }
     if (newton_iters_ >= opts_.max_newton_iters) {
       break;
@@ -357,10 +360,11 @@ void FBstabAlgorithm<Variable, Residual, LinearSolver,
 }
 
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
+template <class OutputStream>
 SolverOut
 FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::PrepareOutput(
     ExitFlag e, int prox_iters, int newton_iters, const Residual& r,
-    time_point start, double initial_residual) const {
+    time_point start, double initial_residual, const OutputStream& os) const {
   struct SolverOut output;
 
   time_point now = clock::now();
@@ -374,7 +378,7 @@ FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::PrepareOutput(
   output.initial_residual = initial_residual;
 
   // Printing is in ms.
-  PrintFinal(prox_iters, newton_iters, e, r, 1000.0 * output.solve_time);
+  PrintFinal(prox_iters, newton_iters, e, r, 1000.0 * output.solve_time, os);
   return output;
 }
 
@@ -398,110 +402,140 @@ FBstabAlgorithm<Variable, Residual, LinearSolver,
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
 void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::InsertMerit(double x) {
-  for (int i = static_cast<int>(merit_buffer_.size()) - 1; i > 0; i--) {
+  for (auto i = merit_buffer_.size() - 1; i > 0; i--) {
     merit_buffer_.at(i) = merit_buffer_.at(i - 1);
   }
   merit_buffer_.at(0) = x;
 }
 
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
+template <class OutputStream>
 void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::PrintIterLine(int prox_iters,
                                                  int newton_iters,
                                                  const Residual& rk,
                                                  const Residual& ri,
-                                                 double itol) const {
+                                                 double itol,
+                                                 const OutputStream& os) const {
+  char buff[100];
   if (opts_.display_level == Display::ITER) {
-    printf("%12d  %12d  %12.4e  %12.4e  %12.4e  %12.4e  %12.4e\n", prox_iters,
-           newton_iters, rk.z_norm(), rk.l_norm(), rk.v_norm(), ri.Norm(),
-           itol);
+    snprintf(buff, 100, "%12d  %12d  %12.4e  %12.4e  %12.4e  %12.4e  %12.4e\n",
+             prox_iters, newton_iters, rk.z_norm(), rk.l_norm(), rk.v_norm(),
+             ri.Norm(), itol);
+    os.Print(buff);
   }
 }
 
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
+template <class OutputStream>
 void FBstabAlgorithm<Variable, Residual, LinearSolver,
-                     Feasibility>::PrintIterHeader() const {
-  if (opts_.display_level == Display::ITER) {
-    printf("%12s  %12s  %12s  %12s  %12s  %12s  %12s\n", "prox iter",
-           "newton iters", "|rz|", "|rl|", "|rv|", "Inner res", "Inner tol");
-  }
-}
-
-template <class Variable, class Residual, class LinearSolver, class Feasibility>
-void FBstabAlgorithm<Variable, Residual, LinearSolver,
-                     Feasibility>::PrintDetailedHeader(int prox_iters,
-                                                       int newton_iters,
-                                                       const Residual& r)
+                     Feasibility>::PrintIterHeader(const OutputStream& os)
     const {
+  char buff[100];
+  if (opts_.display_level == Display::ITER) {
+    snprintf(buff, 100, "%12s  %12s  %12s  %12s  %12s  %12s  %12s\n",
+             "prox iter", "newton iters", "|rz|", "|rl|", "|rv|", "Inner res",
+             "Inner tol");
+    os.Print(buff);
+  }
+}
+
+template <class Variable, class Residual, class LinearSolver, class Feasibility>
+template <class OutputStream>
+void FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::
+    PrintDetailedHeader(int prox_iters, int newton_iters, const Residual& r,
+                        const OutputStream& os) const {
+  char buff[100];
   if (opts_.display_level == Display::ITER_DETAILED) {
     double t = r.Norm();
-    printf("Begin Prox Iter: %d, Total Newton Iters: %d, Residual: %6.4e\n",
-           prox_iters, newton_iters, t);
-    printf("%10s  %10s  %10s  %10s  %10s\n", "Iter", "Step Size", "|rz|",
-           "|rl|", "|rv|");
+    snprintf(buff, 100,
+             "Begin Prox Iter: %d, Total Newton Iters: %d, Residual: %6.4e\n",
+             prox_iters, newton_iters, t);
+    os.Print(buff);
+    snprintf(buff, 100, "%10s  %10s  %10s  %10s  %10s\n", "Iter", "Step Size",
+             "|rz|", "|rl|", "|rv|");
+    os.Print(buff);
   }
 }
 
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
-void FBstabAlgorithm<Variable, Residual, LinearSolver,
-                     Feasibility>::PrintDetailedLine(int iter,
-                                                     double step_length,
-                                                     const Residual& r) const {
+template <class OutputStream>
+void FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::
+    PrintDetailedLine(int iter, double step_length, const Residual& r,
+                      const OutputStream& os) const {
+  char buff[100];
   if (opts_.display_level == Display::ITER_DETAILED) {
-    printf("%10d  %10e  %10e  %10e  %10e\n", iter, step_length, r.z_norm(),
-           r.l_norm(), r.v_norm());
+    snprintf(buff, 100, "%10d  %10e  %10e  %10e  %10e\n", iter, step_length,
+             r.z_norm(), r.l_norm(), r.v_norm());
+    os.Print(buff);
   }
 }
 
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
+template <class OutputStream>
 void FBstabAlgorithm<Variable, Residual, LinearSolver,
                      Feasibility>::PrintDetailedFooter(double tol,
-                                                       const Residual& r)
+                                                       const Residual& r,
+                                                       const OutputStream& os)
     const {
+  char buff[100];
   if (opts_.display_level == Display::ITER_DETAILED) {
-    printf(
-        "Exiting inner loop. Inner residual: %6.4e, Inner tolerance: "
-        "%6.4e\n",
-        r.Norm(), tol);
+    snprintf(buff, 100,
+             "Exiting inner loop. Inner residual: %6.4e, Inner tolerance: "
+             "%6.4e\n",
+             r.Norm(), tol);
+    os.Print(buff);
   }
 }
 
 template <class Variable, class Residual, class LinearSolver, class Feasibility>
+template <class OutputStream>
 void FBstabAlgorithm<Variable, Residual, LinearSolver, Feasibility>::PrintFinal(
     int prox_iters, int newton_iters, ExitFlag eflag, const Residual& r,
-    double t) const {
+    double t, const OutputStream& os) const {
+  char buff[100];
   if (opts_.display_level >= Display::FINAL) {
-    printf("\nOptimization completed!  Exit code:");
+    snprintf(buff, 100, "\nOptimization completed!  Exit code:");
+    os.Print(buff);
     switch (eflag) {
       case ExitFlag::SUCCESS:
-        printf(" Success\n");
+        snprintf(buff, 100, " Success\n");
         break;
       case ExitFlag::DIVERGENCE:
-        printf(" Divergence\n");
+        snprintf(buff, 100, " Divergence\n");
         break;
       case ExitFlag::MAXITERATIONS:
-        printf(" Iteration limit exceeded\n");
+        snprintf(buff, 100, " Iteration limit exceeded\n");
         break;
       case ExitFlag::PRIMAL_INFEASIBLE:
-        printf(" Primal Infeasibility\n");
+        snprintf(buff, 100, " Primal Infeasibility\n");
         break;
       case ExitFlag::DUAL_INFEASIBLE:
-        printf(" Dual Infeasibility\n");
+        snprintf(buff, 100, " Dual Infeasibility\n");
         break;
       case ExitFlag::PRIMAL_DUAL_INFEASIBLE:
-        printf(" Primal-Dual Infeasibility\n");
+        snprintf(buff, 100, " Primal-Dual Infeasibility\n");
         break;
       default:
         std::runtime_error(" Undefined exit flag supplied to PrintFinal.\n");
     }
-    printf("Time elapsed: %f ms (-1.0 indicates timing disabled)\n", t);
-    printf("Proximal iterations: %d out of %d\n", prox_iters,
-           opts_.max_prox_iters);
-    printf("Newton iterations: %d out of %d\n", newton_iters,
-           opts_.max_newton_iters);
-    printf("%10s  %10s  %10s  %10s\n", "|rz|", "|rl|", "|rv|", "Tolerance");
-    printf("%10.4e  %10.4e  %10.4e  %10.4e\n", r.z_norm(), r.l_norm(),
-           r.v_norm(), combo_tol_);
-    printf("\n");
+    os.Print(buff);
+    snprintf(buff, 100,
+             "Time elapsed: %f ms (-1.0 indicates timing disabled)\n", t);
+    os.Print(buff);
+    snprintf(buff, 100, "Proximal iterations: %d out of %d\n", prox_iters,
+             opts_.max_prox_iters);
+    os.Print(buff);
+    snprintf(buff, 100, "Newton iterations: %d out of %d\n", newton_iters,
+             opts_.max_newton_iters);
+    os.Print(buff);
+    snprintf(buff, 100, "%10s  %10s  %10s  %10s\n", "|rz|", "|rl|", "|rv|",
+             "Tolerance");
+    os.Print(buff);
+    snprintf(buff, 100, "%10.4e  %10.4e  %10.4e  %10.4e\n", r.z_norm(),
+             r.l_norm(), r.v_norm(), combo_tol_);
+    os.Print(buff);
+    snprintf(buff, 100, "\n");
+    os.Print(buff);
   }
 }

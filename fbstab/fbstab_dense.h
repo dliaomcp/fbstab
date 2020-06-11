@@ -10,6 +10,7 @@
 #include "fbstab/components/full_variable.h"
 #include "fbstab/fbstab_algorithm.h"
 #include "tools/copyable_macros.h"
+#include "tools/output_stream.h"
 
 namespace fbstab {
 
@@ -121,22 +122,30 @@ class FBstabDense {
   FBstabDense(int nz, int nl, int nv);
 
   /**
-   * Solves an instance of (1)
+   * Solves an instance of (1).
    *
-   * @param[in]   qp  problem data
+   * @param[in]     qp  problem data
    * @param[in,out] x   initial guess, overwritten with the solution
    *
    * @return Summary of the optimizer output, see fbstab_algorithm.h.
    *
-   * The template parameter allows for both Variable and VariableRef type
-   * inputs.
+   * @tparam InputData      ProblemData or ProblemDataRef
+   * @tparam InputVariable  Variable or VariableRef
+   * @tparam OutStream      Allows various printing classes
    */
-  template <class InputData, class InputVariable>
-  SolverOut Solve(const InputData& qp, InputVariable* x) {
+  template <class InputData, class InputVariable, class OutStream>
+  SolverOut Solve(const InputData& qp, InputVariable* x, const OutStream& os) {
     // Data performs its own validation checks.
     DenseData data(&qp.H, &qp.f, &qp.G, &qp.h, &qp.A, &qp.b);
     ValidateInputs(data, *x);
-    return algorithm_->Solve(data, &x->z, &x->l, &x->v, &x->y);
+    return algorithm_->Solve(data, &x->z, &x->l, &x->v, &x->y, os);
+  }
+
+  /** Uses the default stdout printer */
+  template <class InputData, class InputVariable>
+  SolverOut Solve(const InputData& qp, InputVariable* x) {
+    StandardOutput os;
+    return Solve(qp, x, os);
   }
 
   /**
