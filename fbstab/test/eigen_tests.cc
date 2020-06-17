@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 
 namespace fbstab {
 namespace test {

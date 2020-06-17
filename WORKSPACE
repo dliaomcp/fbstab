@@ -15,6 +15,6 @@ load("@fbstab//tools/gtest:repository.bzl","gtest_repository")
 # set use_local = True and supply the local absolute path.
 # This should contain the Eigen/ directory that contains 
 # Eigen, Dense, Core etc. (not the one that contains e.g., INSTALL)
-eigen_repository(name = "eigen", use_local = False, local_path = "/usr/local/include/")
 
+eigen_repository(name = "eigen", use_local = False, local_path = "/usr/local/include/")
 gtest_repository(name = "gtest")
