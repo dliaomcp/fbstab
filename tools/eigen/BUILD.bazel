@@ -1,1 +1,27 @@
 # -*- python -*-
+
+
+load(
+    "//tools:fbstab.bzl",
+    "fbstab_cc_googletest",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+
+fbstab_cc_googletest(
+    name = "dense_tests",
+    srcs = ["test/dense_tests.cc"],
+    deps = [
+        "@eigen",
+    ],
+)
+
+
+fbstab_cc_googletest(
+    name = "sparse_tests",
+    srcs = ["test/sparse_tests.cc"],
+    deps = [
+        "@eigen",
+    ],
+)
