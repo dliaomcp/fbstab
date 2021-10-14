@@ -1,0 +1,38 @@
+# -*- python -*-
+
+load(
+    "//tools:fbstab.bzl",
+    "fbstab_cc_googletest",
+    "fbstab_cc_library",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+
+cc_library(
+    name = "qdldl",
+    hdrs = [
+        "qdldl/include/qdldl.h",
+        "qdldl_types.h",
+        "qdldl_wrapper.h"
+    ],
+    srcs = ["qdldl/src/qdldl.c"],
+    includes = ["."],
+    copts = [
+        "-fvisibility=hidden",
+        "-Werror=incompatible-pointer-types",
+        "-Itools/qdldl",
+        "-Itools/qdldl/qdldl/include",
+    ],
+    linkstatic = 1,
+)
+
+fbstab_cc_googletest(
+	name = "qdldl_tests",
+	srcs = ["test/qdldl_test.cc"],
+	deps = [
+		"@eigen",
+		":qdldl",
+        "//tools:essential",
+	],
+)
