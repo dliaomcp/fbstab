@@ -88,10 +88,4 @@ fbstab_cc_googletest(
     ],
 )
 
-fbstab_cc_googletest(
-    name = "eigen_tests",
-    srcs = ["test/eigen_tests.cc"],
-    deps = [
-        "@eigen",
-    ],
-)
+
