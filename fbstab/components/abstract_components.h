@@ -204,7 +204,7 @@ class Residual {
    *
    * @param[in] x Evaluation point.
    */
-  virtual void NaturalResidual(const Variable& x);
+  virtual void NaturalResidual(const Variable& x) = 0;
 
   /**
    * Computes the natural residual function augmented with
@@ -214,7 +214,7 @@ class Residual {
    *
    * @param[in] x Evaluation point.
    */
-  virtual void PenalizedNaturalResidual(const Variable& x);
+  virtual void PenalizedNaturalResidual(const Variable& x) = 0;
 
   /** @return ||z|| */
   virtual double z_norm() const = 0;

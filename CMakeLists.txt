@@ -28,5 +28,5 @@ endif()
 
 # The cmake build system isn't used for debugging,
 # so default to an optimized build.
-add_compile_options(-O3 -g0 -std=c++11) 
+#add_compile_options(-O3 -g0 -std=c++11)
 add_subdirectory(fbstab)
